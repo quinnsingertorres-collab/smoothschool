@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { DataProvider } from "@/components/DataProvider";
-import { Shell } from "@/components/Shell";
 
 export const metadata: Metadata = {
   title: "SmoothSchool",
@@ -11,11 +9,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <DataProvider>
-          <Shell>{children}</Shell>
-        </DataProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

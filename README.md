@@ -91,6 +91,27 @@ only for the current browser tab.
    boundary is the Firestore rules above, not hiding this config — but
    there's no reason to publish them either.)
 
+## 2c. Optional: put a password on the app
+
+By default anyone with the URL can open the app. To require a password
+first, set one environment variable:
+
+```
+APP_PASSWORD=yourpassword
+```
+
+Add it to `.env.local` for local dev, and to Vercel's Environment
+Variables for the live site (same place as the Firebase keys). Leave it
+unset to leave the app open — no password screen appears.
+
+This is a single shared password for the whole app, not a real login
+system, and it only gates the Next.js pages. The Firestore rules above
+are still `allow read, write: if true`, so the data itself remains
+readable by anyone with the Firebase config values (which ship in the
+public JS bundle regardless). Think of it as a "don't share this link"
+lock on the front door, not a vault — good enough to keep the site from
+being casually stumbled on, not a substitute for real auth.
+
 ## 3. Run it locally
 
 ```bash
@@ -108,9 +129,9 @@ double check `.env.local`.
    login is easiest).
 2. **Import** the `smoothschool` repo you pushed in step 1.
 3. Before clicking Deploy, open **Environment Variables** and add the
-   same six `NEXT_PUBLIC_FIREBASE_*` values from your `.env.local`.
-   Vercel can't read your local `.env.local` file — it needs its own
-   copy.
+   same six `NEXT_PUBLIC_FIREBASE_*` values from your `.env.local`
+   (plus `APP_PASSWORD` if you set one). Vercel can't read your local
+   `.env.local` file — it needs its own copy.
 4. Click **Deploy**. Vercel will build and give you a live URL
    (`smoothschool-<something>.vercel.app`); every future push to
    `main` redeploys automatically.
@@ -119,13 +140,16 @@ double check `.env.local`.
 
 ```
 app/
-  home/            "Today" dashboard (date, weather, due-soon, classes)
-  planner/         weekly after-school planner
-  schedule/        periods, lunch block, and days-off (no school)
-  [classname]/     one page per class, e.g. /ap-biology
+  (app)/home/      "Today" dashboard (date, weather, due-soon, classes)
+  (app)/planner/   weekly after-school planner
+  (app)/schedule/  periods, lunch block, and days-off (no school)
+  (app)/[classname]/  one page per class, e.g. /ap-biology
+  login/           password screen (only shown if APP_PASSWORD is set)
   api/weather/     server route that calls the free NWS weather API
+  api/login/        api/logout/  password check + session cookie
+proxy.ts            gates every page behind APP_PASSWORD, if set
 components/        Sidebar, add-class modal, shared icons, weather widget
-lib/               Firestore data model, date/slug helpers
+lib/               Firestore data model, date/slug helpers, password check
 ```
 
 Each class's page lives at `/<slugified-class-name>` (e.g. "AP

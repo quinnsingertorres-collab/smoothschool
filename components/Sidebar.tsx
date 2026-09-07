@@ -59,7 +59,12 @@ export function Sidebar() {
         </Link>
       </div>
 
-      <div className="sidebar-foot">Your classes, homework and afternoons — all in one place.</div>
+      <div className="sidebar-foot">
+        Your classes, homework and afternoons — all in one place.
+        <form action="/api/logout" method="POST" className="logout-form">
+          <button type="submit" className="logout-link">Log out</button>
+        </form>
+      </div>
     </nav>
   );
 }
