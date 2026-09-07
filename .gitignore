@@ -19,3 +19,7 @@ npm-debug.log*
 
 # typescript
 *.tsbuildinfo
+
+# Local cleanup artifacts (leftover git lock files from a sandboxed setup step)
+/.git-trash/
+/.git-broken-backup/
