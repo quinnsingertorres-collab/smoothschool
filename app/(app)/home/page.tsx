@@ -17,6 +17,16 @@ function findCurrentPeriod(periods: Period[]) {
   return periods.find((p) => p.start && p.end && t >= p.start && t < p.end) || null;
 }
 
+const USER_NAME = "Quinn";
+
+function greeting(hour: number) {
+  if (hour < 5) return "Up late, ";
+  if (hour < 12) return "Good morning, ";
+  if (hour < 17) return "Good afternoon, ";
+  if (hour < 21) return "Good evening, ";
+  return "Up late, ";
+}
+
 export default function HomePage() {
   const { classes, schedule, noSchoolMap, dbConfigured, dbReady } = useData();
   const openAddClass = useOpenAddClass();
@@ -44,7 +54,10 @@ export default function HomePage() {
     <div>
       <div className="page-head today-head">
         <div>
-          <span className="eyebrow">Today</span>
+          <span className="eyebrow">
+            {greeting(today.getHours())}
+            {USER_NAME}
+          </span>
           <h1>{dateStr}</h1>
           <div className="sub">
             {dbConfigured && !dbReady
