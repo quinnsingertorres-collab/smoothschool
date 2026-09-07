@@ -1,0 +1,13 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	symlinks = false
+	ignorecase = true
+[user]
+	name = Quinn
+	email = quinnsingertorres@gmail.com
+[remote "origin"]
+	url = https://github.com/quinnsingertorres-collab/smoothschool.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
