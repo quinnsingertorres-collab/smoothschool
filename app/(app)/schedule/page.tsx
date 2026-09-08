@@ -102,6 +102,7 @@ export default function SchedulePage() {
     addPeriod,
     updatePeriod,
     deletePeriod,
+    autoFillClasses,
     noSchoolDays,
     addNoSchoolDay,
     deleteNoSchoolDay,
@@ -112,6 +113,7 @@ export default function SchedulePage() {
   const [addingDayOff, setAddingDayOff] = useState(false);
   const [addingVersion, setAddingVersion] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [autoFillMsg, setAutoFillMsg] = useState<string | null>(null);
 
   const viewing =
     scheduleVersions.find((v) => v.id === viewingId) ||
@@ -132,10 +134,27 @@ export default function SchedulePage() {
           <h1>Periods &amp; times</h1>
           <div className="sub">Set up your daily period times, lunch block, and which class falls in each period.</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setAddingPeriod((v) => !v)}>
-          <PlusIcon /> Add period
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="btn"
+            onClick={() => {
+              const count = autoFillClasses();
+              setAutoFillMsg(count ? `Filled in ${count} period${count === 1 ? "" : "s"}.` : "Nothing to auto-fill — periods are either already linked or don't match a class's period number.");
+            }}
+          >
+            Auto-fill classes
+          </button>
+          <button className="btn btn-primary" onClick={() => setAddingPeriod((v) => !v)}>
+            <PlusIcon /> Add period
+          </button>
+        </div>
       </div>
+
+      {autoFillMsg ? (
+        <div className="sub" style={{ marginBottom: 10 }}>
+          {autoFillMsg}
+        </div>
+      ) : null}
 
       <div className="sched-tabs">
         {scheduleVersions.map((v) => (

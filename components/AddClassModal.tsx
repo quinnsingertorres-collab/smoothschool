@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useData } from "@/components/DataProvider";
-import { CLASS_COLORS } from "@/lib/types";
+import { DayPicker } from "@/components/DayPicker";
+import { CLASS_COLORS, DayKey } from "@/lib/types";
 
 export function AddClassModal({ onClose }: { onClose: () => void }) {
   const { addClass, classes } = useData();
@@ -13,11 +14,19 @@ export function AddClassModal({ onClose }: { onClose: () => void }) {
   const [room, setRoom] = useState("");
   const [teacher, setTeacher] = useState("");
   const [color, setColor] = useState(CLASS_COLORS[classes.length % CLASS_COLORS.length]);
+  const [days, setDays] = useState<DayKey[]>([]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    const slug = await addClass({ name: name.trim(), period: period.trim(), room: room.trim(), teacher: teacher.trim(), color });
+    const slug = await addClass({
+      name: name.trim(),
+      period: period.trim(),
+      room: room.trim(),
+      teacher: teacher.trim(),
+      color,
+      days,
+    });
     onClose();
     router.push(`/${slug}`);
   }
@@ -48,6 +57,13 @@ export function AddClassModal({ onClose }: { onClose: () => void }) {
             <div className="field-row" style={{ gridColumn: "1/-1" }}>
               <label>Teacher</label>
               <input type="text" value={teacher} onChange={(e) => setTeacher(e.target.value)} />
+            </div>
+          </div>
+          <div className="field-row" style={{ marginBottom: 14 }}>
+            <label>Meets on</label>
+            <DayPicker value={days} onChange={setDays} />
+            <div className="sub" style={{ marginTop: 6, fontSize: 12 }}>
+              {days.length ? `Only ${days.length} day${days.length === 1 ? "" : "s"} a week` : "Meets every school day"}
             </div>
           </div>
           <div className="field-row" style={{ marginBottom: 14 }}>

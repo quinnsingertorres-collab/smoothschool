@@ -4,8 +4,9 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useData } from "@/components/DataProvider";
 import { PencilIcon, TrashIcon, PlusIcon, ExtLinkIcon, CheckIcon } from "@/components/Icons";
+import { DayPicker, formatDays } from "@/components/DayPicker";
 import { fmtDate, dueBadge } from "@/lib/date";
-import { CLASS_COLORS, ProjectItem } from "@/lib/types";
+import { CLASS_COLORS, DayKey, ProjectItem } from "@/lib/types";
 
 function hexToSoft(hex: string) {
   if (!hex || hex.length !== 7) return "var(--surface)";
@@ -27,6 +28,7 @@ export function ClassPageClient({ slug }: { slug: string }) {
   const [hwFormOpen, setHwFormOpen] = useState(false);
   const [projFormOpen, setProjFormOpen] = useState(false);
   const [editColor, setEditColor] = useState<string | null>(null);
+  const [editDays, setEditDays] = useState<DayKey[]>([]);
 
   if (!c) {
     return (
@@ -54,6 +56,7 @@ export function ClassPageClient({ slug }: { slug: string }) {
             className="btn btn-sm"
             onClick={() => {
               setEditColor(c.color);
+              setEditDays(c.days || []);
               setEditingInfo((v) => !v);
             }}
           >
@@ -89,6 +92,7 @@ export function ClassPageClient({ slug }: { slug: string }) {
                 classroomLink: (f.elements.namedItem("classroomLink") as HTMLInputElement).value.trim(),
                 driveLink: (f.elements.namedItem("driveLink") as HTMLInputElement).value.trim(),
                 color: editColor || c.color,
+                days: editDays,
               });
               setEditingInfo(false);
             }}
@@ -129,6 +133,13 @@ export function ClassPageClient({ slug }: { slug: string }) {
                 <input type="text" name="driveLink" defaultValue={c.driveLink} placeholder="drive.google.com/drive/folders/..." />
               </div>
             </div>
+            <div className="field-row" style={{ marginBottom: 12 }}>
+              <label>Meets on</label>
+              <DayPicker value={editDays} onChange={setEditDays} />
+              <div className="sub" style={{ marginTop: 6, fontSize: 12 }}>
+                {editDays.length ? `Only ${editDays.length} day${editDays.length === 1 ? "" : "s"} a week` : "Meets every school day"}
+              </div>
+            </div>
             <div className="field-row" style={{ marginBottom: 10 }}>
               <label>Color</label>
               <div className="swatch-row">
@@ -161,6 +172,7 @@ export function ClassPageClient({ slug }: { slug: string }) {
               <MetaItem k="Teacher" v={c.teacher || "—"} />
               <MetaItem k="Room" v={c.room || "—"} />
               <MetaItem k="Contact" v={c.contact || "—"} />
+              <MetaItem k="Meets" v={formatDays(c.days)} />
             </div>
             <div className="link-row">
               {c.classroomLink ? (

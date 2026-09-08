@@ -6,7 +6,7 @@ import { useData } from "@/components/DataProvider";
 import { useOpenAddClass } from "@/components/AddClassContext";
 import { WeatherWidget } from "@/components/WeatherWidget";
 import { PlusIcon, CalendarOffIcon } from "@/components/Icons";
-import { fmtTime, dueBadge, todayISO, nowHM } from "@/lib/date";
+import { fmtTime, dueBadge, todayISO, nowHM, todayKey, meetsOnDay } from "@/lib/date";
 import { Period } from "@/lib/types";
 
 function sortedPeriods(periods: Period[]) {
@@ -28,13 +28,14 @@ function greeting(hour: number) {
 }
 
 export default function HomePage() {
-  const { classes, schedule, noSchoolMap, dbConfigured, dbReady } = useData();
+  const { classes, schedule, noSchoolMap, dbConfigured, dbReady, classById } = useData();
   const openAddClass = useOpenAddClass();
 
   const today = new Date();
   const dateStr = today.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const iso = todayISO(today);
   const noSchoolReason = noSchoolMap[iso];
+  const todayDayKey = todayKey();
 
   const ps = sortedPeriods(schedule);
   const cur = findCurrentPeriod(ps);
@@ -86,12 +87,24 @@ export default function HomePage() {
         </div>
       ) : ps.length ? (
         <div className="today-strip">
-          {ps.map((p) => (
-            <div key={p.id} className={"period-chip" + (cur && cur.id === p.id ? " current" : "")}>
-              <div className="time tabular">{fmtTime(p.start)}</div>
-              <div className="pname">{p.label}</div>
-            </div>
-          ))}
+          {ps.map((p) => {
+            const cls = p.classId ? classById(p.classId) : null;
+            const skipped = cls ? !meetsOnDay(cls.days, todayDayKey) : false;
+            return (
+              <div
+                key={p.id}
+                className={"period-chip" + (cur && cur.id === p.id ? " current" : "") + (skipped ? " skipped" : "")}
+              >
+                <div className="time tabular">{fmtTime(p.start)}</div>
+                <div className="pname">{p.label}</div>
+                {cls ? (
+                  <div className="pclass" style={{ color: skipped ? undefined : cls.color }}>
+                    {skipped ? `${cls.name} — not today` : cls.name}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
@@ -138,11 +151,13 @@ export default function HomePage() {
             <div className="class-tiles">
               {classes.map((c) => {
                 const openHw = (c.homework || []).filter((h) => !h.done).length;
+                const meetsToday = meetsOnDay(c.days, todayDayKey);
                 return (
-                  <Link href={`/${c.id}`} className="class-tile" key={c.id}>
+                  <Link href={`/${c.id}`} className={"class-tile" + (meetsToday ? "" : " not-today")} key={c.id}>
                     <div className="top">
                       <span className="dot" style={{ background: c.color }} />
                       <span className="name">{c.name || "Untitled class"}</span>
+                      {!meetsToday ? <span className="not-today-badge">Not today</span> : null}
                     </div>
                     <div className="meta">
                       {c.teacher ? c.teacher + " · " : ""}

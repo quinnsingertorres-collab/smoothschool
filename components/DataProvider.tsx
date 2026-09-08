@@ -26,6 +26,7 @@ import {
 import { uid } from "@/lib/date";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { defaultScheduleVersions } from "@/lib/schedule-presets";
+import { autoMatchClasses } from "@/lib/schedule-match";
 
 function emptyPlanner(): PlannerDoc {
   const p = {} as PlannerDoc;
@@ -52,6 +53,7 @@ interface DataContextValue {
     teacher: string;
     room: string;
     color: string;
+    days?: DayKey[];
   }) => Promise<string>;
   updateClassInfo: (id: string, patch: Partial<ClassData>) => void;
   deleteClass: (id: string) => void;
@@ -72,6 +74,7 @@ interface DataContextValue {
   renameScheduleVersion: (id: string, name: string) => void;
   deleteScheduleVersion: (id: string) => void;
   setActiveSchedule: (id: string) => void;
+  autoFillClasses: () => number;
 
   addPlannerBlock: (day: DayKey, block: Omit<PlannerBlock, "id">) => void;
   deletePlannerBlock: (day: DayKey, blockId: string) => void;
@@ -180,6 +183,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     teacher: string;
     room: string;
     color: string;
+    days?: DayKey[];
   }): Promise<string> {
     const existingSlugs = new Set(classes.map((c) => c.id));
     const slug = uniqueSlug(slugify(input.name), existingSlugs);
@@ -196,6 +200,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       order: classes.length,
       homework: [],
       projects: [],
+      days: input.days && input.days.length ? input.days : [],
     };
     if (!db) {
       setClasses((prev) => [...prev, newClass]);
@@ -311,6 +316,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     saveScheduleState(scheduleVersions, id);
   }
 
+  function autoFillClasses(): number {
+    let filledCount = 0;
+    const versions = scheduleVersions.map((v) => {
+      const matches = autoMatchClasses(v.periods, classes);
+      const matchedIds = Object.keys(matches);
+      if (!matchedIds.length) return v;
+      filledCount += matchedIds.length;
+      return {
+        ...v,
+        periods: v.periods.map((p) => (matches[p.id] ? { ...p, classId: matches[p.id] } : p)),
+      };
+    });
+    if (filledCount > 0) saveScheduleState(versions, activeScheduleId);
+    return filledCount;
+  }
+
   function savePlanner(next: PlannerDoc) {
     setPlanner(next);
     if (db) setDoc(doc(db, "planner", "week"), next);
@@ -382,6 +403,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     renameScheduleVersion,
     deleteScheduleVersion,
     setActiveSchedule,
+    autoFillClasses,
     addPlannerBlock,
     deletePlannerBlock,
     addNoSchoolDay,

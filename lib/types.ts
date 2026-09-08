@@ -27,6 +27,7 @@ export interface ClassData {
   order: number;
   homework: HomeworkItem[];
   projects: ProjectItem[];
+  days?: DayKey[]; // which days it meets — empty/undefined means every school day
 }
 
 export type PeriodType = "class" | "lunch" | "other";
@@ -48,6 +49,16 @@ export interface ScheduleVersion {
 
 export const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 export type DayKey = (typeof DAY_KEYS)[number];
+
+export const DAY_LABELS: Record<DayKey, string> = {
+  mon: "Mon",
+  tue: "Tue",
+  wed: "Wed",
+  thu: "Thu",
+  fri: "Fri",
+  sat: "Sat",
+  sun: "Sun",
+};
 
 export interface PlannerBlock {
   id: string;

@@ -14,6 +14,10 @@ export function todayKey(): (typeof JS_DAY_TO_KEY)[number] {
   return JS_DAY_TO_KEY[new Date().getDay()];
 }
 
+export function meetsOnDay(days: import("./types").DayKey[] | undefined, dayKey: import("./types").DayKey): boolean {
+  return !days || !days.length || days.includes(dayKey);
+}
+
 export function nowHM(): string {
   const d = new Date();
   return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
