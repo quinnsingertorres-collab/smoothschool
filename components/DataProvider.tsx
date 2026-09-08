@@ -21,9 +21,11 @@ import {
   PlannerBlock,
   PlannerDoc,
   ProjectItem,
+  ScheduleVersion,
 } from "@/lib/types";
 import { uid } from "@/lib/date";
 import { slugify, uniqueSlug } from "@/lib/slug";
+import { defaultScheduleVersions } from "@/lib/schedule-presets";
 
 function emptyPlanner(): PlannerDoc {
   const p = {} as PlannerDoc;
@@ -35,7 +37,9 @@ interface DataContextValue {
   dbReady: boolean; // Firebase configured AND the first read has come back
   dbConfigured: boolean; // Firebase config values are present at all
   classes: ClassData[];
-  schedule: Period[];
+  schedule: Period[]; // periods of the active (default) schedule version
+  scheduleVersions: ScheduleVersion[];
+  activeScheduleId: string;
   planner: PlannerDoc;
   noSchoolDays: NoSchoolDay[];
   noSchoolMap: Record<string, string>;
@@ -60,9 +64,14 @@ interface DataContextValue {
   setProjectStatus: (classId: string, projId: string, status: ProjectItem["status"]) => void;
   deleteProject: (classId: string, projId: string) => void;
 
-  addPeriod: (p: Omit<Period, "id">) => void;
-  updatePeriod: (id: string, patch: Partial<Period>) => void;
-  deletePeriod: (id: string) => void;
+  addPeriod: (versionId: string, p: Omit<Period, "id">) => void;
+  updatePeriod: (versionId: string, id: string, patch: Partial<Period>) => void;
+  deletePeriod: (versionId: string, id: string) => void;
+
+  addScheduleVersion: (name: string, copyFromId?: string) => string;
+  renameScheduleVersion: (id: string, name: string) => void;
+  deleteScheduleVersion: (id: string) => void;
+  setActiveSchedule: (id: string) => void;
 
   addPlannerBlock: (day: DayKey, block: Omit<PlannerBlock, "id">) => void;
   deletePlannerBlock: (day: DayKey, blockId: string) => void;
@@ -81,7 +90,8 @@ export function useData(): DataContextValue {
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [classes, setClasses] = useState<ClassData[]>([]);
-  const [schedule, setSchedule] = useState<Period[]>([]);
+  const [scheduleVersions, setScheduleVersions] = useState<ScheduleVersion[]>(() => defaultScheduleVersions());
+  const [activeScheduleId, setActiveScheduleIdRaw] = useState<string>(() => scheduleVersions[0]?.id || "");
   const [planner, setPlanner] = useState<PlannerDoc>(emptyPlanner());
   const [noSchoolDays, setNoSchoolDays] = useState<NoSchoolDay[]>([]);
   const [gotFirstSnapshot, setGotFirstSnapshot] = useState(false);
@@ -94,8 +104,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setGotFirstSnapshot(true);
       }),
       onSnapshot(doc(db, "schedule", "main"), (snap) => {
-        const data = snap.exists() ? (snap.data() as { periods?: Period[] }) : {};
-        setSchedule(data.periods || []);
+        const data = snap.exists()
+          ? (snap.data() as { versions?: ScheduleVersion[]; activeVersionId?: string; periods?: Period[] })
+          : {};
+        if (data.versions && data.versions.length) {
+          setScheduleVersions(data.versions);
+          setActiveScheduleIdRaw(
+            data.activeVersionId && data.versions.some((v) => v.id === data.activeVersionId)
+              ? data.activeVersionId
+              : data.versions[0].id
+          );
+        } else if (data.periods && data.periods.length) {
+          // Legacy shape from before multiple schedule versions existed — migrate in place.
+          const legacyId = uid();
+          const migrated: ScheduleVersion[] = [{ id: legacyId, name: "Regular", periods: data.periods }];
+          setScheduleVersions(migrated);
+          setActiveScheduleIdRaw(legacyId);
+          if (db) setDoc(doc(db, "schedule", "main"), { versions: migrated, activeVersionId: legacyId });
+        } else {
+          const seeded = defaultScheduleVersions();
+          setScheduleVersions(seeded);
+          setActiveScheduleIdRaw(seeded[0].id);
+          if (db) setDoc(doc(db, "schedule", "main"), { versions: seeded, activeVersionId: seeded[0].id });
+        }
       }),
       onSnapshot(doc(db, "planner", "week"), (snap) => {
         const data = snap.exists() ? (snap.data() as Partial<PlannerDoc>) : {};
@@ -207,18 +238,57 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     saveClass({ ...c, projects });
   }
 
-  function saveSchedule(periods: Period[]) {
-    setSchedule(periods);
-    if (db) setDoc(doc(db, "schedule", "main"), { periods });
+  function saveScheduleState(versions: ScheduleVersion[], activeId: string) {
+    setScheduleVersions(versions);
+    setActiveScheduleIdRaw(activeId);
+    if (db) setDoc(doc(db, "schedule", "main"), { versions, activeVersionId: activeId });
   }
-  function addPeriod(p: Omit<Period, "id">) {
-    saveSchedule([...schedule, { ...p, id: uid() }]);
+
+  function addPeriod(versionId: string, p: Omit<Period, "id">) {
+    const versions = scheduleVersions.map((v) =>
+      v.id === versionId ? { ...v, periods: [...v.periods, { ...p, id: uid() }] } : v
+    );
+    saveScheduleState(versions, activeScheduleId);
   }
-  function updatePeriod(id: string, patch: Partial<Period>) {
-    saveSchedule(schedule.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  function updatePeriod(versionId: string, id: string, patch: Partial<Period>) {
+    const versions = scheduleVersions.map((v) =>
+      v.id === versionId ? { ...v, periods: v.periods.map((p) => (p.id === id ? { ...p, ...patch } : p)) } : v
+    );
+    saveScheduleState(versions, activeScheduleId);
   }
-  function deletePeriod(id: string) {
-    saveSchedule(schedule.filter((p) => p.id !== id));
+  function deletePeriod(versionId: string, id: string) {
+    const versions = scheduleVersions.map((v) =>
+      v.id === versionId ? { ...v, periods: v.periods.filter((p) => p.id !== id) } : v
+    );
+    saveScheduleState(versions, activeScheduleId);
+  }
+
+  function addScheduleVersion(name: string, copyFromId?: string): string {
+    const source = copyFromId ? scheduleVersions.find((v) => v.id === copyFromId) : undefined;
+    const newVersion: ScheduleVersion = {
+      id: uid(),
+      name: name.trim() || "New schedule",
+      periods: source ? source.periods.map((p) => ({ ...p, id: uid() })) : [],
+    };
+    saveScheduleState([...scheduleVersions, newVersion], activeScheduleId);
+    return newVersion.id;
+  }
+  function renameScheduleVersion(id: string, name: string) {
+    if (!name.trim()) return;
+    saveScheduleState(
+      scheduleVersions.map((v) => (v.id === id ? { ...v, name: name.trim() } : v)),
+      activeScheduleId
+    );
+  }
+  function deleteScheduleVersion(id: string) {
+    if (scheduleVersions.length <= 1) return;
+    const remaining = scheduleVersions.filter((v) => v.id !== id);
+    const nextActive = activeScheduleId === id ? remaining[0].id : activeScheduleId;
+    saveScheduleState(remaining, nextActive);
+  }
+  function setActiveSchedule(id: string) {
+    if (!scheduleVersions.some((v) => v.id === id)) return;
+    saveScheduleState(scheduleVersions, id);
   }
 
   function savePlanner(next: PlannerDoc) {
@@ -260,11 +330,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return m;
   }, [noSchoolDays]);
 
+  const schedule = useMemo(() => {
+    const active = scheduleVersions.find((v) => v.id === activeScheduleId) || scheduleVersions[0];
+    return active ? active.periods : [];
+  }, [scheduleVersions, activeScheduleId]);
+
   const value: DataContextValue = {
     dbReady: firebaseReady && gotFirstSnapshot,
     dbConfigured: firebaseReady,
     classes,
     schedule,
+    scheduleVersions,
+    activeScheduleId,
     planner,
     noSchoolDays,
     noSchoolMap,
@@ -281,6 +358,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     addPeriod,
     updatePeriod,
     deletePeriod,
+    addScheduleVersion,
+    renameScheduleVersion,
+    deleteScheduleVersion,
+    setActiveSchedule,
     addPlannerBlock,
     deletePlannerBlock,
     addNoSchoolDay,

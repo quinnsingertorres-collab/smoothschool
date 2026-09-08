@@ -90,13 +90,35 @@ function PeriodForm({
 }
 
 export default function SchedulePage() {
-  const { schedule, classes, classById, addPeriod, updatePeriod, deletePeriod, noSchoolDays, addNoSchoolDay, deleteNoSchoolDay } =
-    useData();
+  const {
+    scheduleVersions,
+    activeScheduleId,
+    setActiveSchedule,
+    addScheduleVersion,
+    renameScheduleVersion,
+    deleteScheduleVersion,
+    classes,
+    classById,
+    addPeriod,
+    updatePeriod,
+    deletePeriod,
+    noSchoolDays,
+    addNoSchoolDay,
+    deleteNoSchoolDay,
+  } = useData();
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const [addingPeriod, setAddingPeriod] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingDayOff, setAddingDayOff] = useState(false);
+  const [addingVersion, setAddingVersion] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
 
-  const ps = sortedPeriods(schedule);
+  const viewing =
+    scheduleVersions.find((v) => v.id === viewingId) ||
+    scheduleVersions.find((v) => v.id === activeScheduleId) ||
+    scheduleVersions[0];
+
+  const ps = sortedPeriods(viewing ? viewing.periods : []);
   const cur = findCurrentPeriod(ps);
   const upcomingDayOff = new Date();
   upcomingDayOff.setDate(upcomingDayOff.getDate() - 1);
@@ -115,13 +137,136 @@ export default function SchedulePage() {
         </button>
       </div>
 
-      {addingPeriod ? (
+      <div className="sched-tabs">
+        {scheduleVersions.map((v) => (
+          <button
+            key={v.id}
+            className={"sched-tab" + (viewing?.id === v.id ? " active" : "")}
+            onClick={() => {
+              setViewingId(v.id);
+              setAddingPeriod(false);
+              setEditingId(null);
+              setRenamingId(null);
+            }}
+          >
+            {v.name}
+            {activeScheduleId === v.id ? <span className="sched-tab-badge">Default</span> : null}
+          </button>
+        ))}
+        <button
+          className="sched-tab sched-tab-add"
+          onClick={() => setAddingVersion((v) => !v)}
+        >
+          <PlusIcon /> New version
+        </button>
+      </div>
+
+      {addingVersion ? (
+        <form
+          className="inline-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const f = e.currentTarget;
+            const name = (f.elements.namedItem("versionName") as HTMLInputElement).value.trim();
+            const copyFrom = (f.elements.namedItem("copyFrom") as HTMLSelectElement).value || undefined;
+            if (!name) return;
+            const newId = addScheduleVersion(name, copyFrom);
+            setViewingId(newId);
+            setAddingVersion(false);
+          }}
+        >
+          <div className="form-grid">
+            <div className="field-row">
+              <label>Schedule name</label>
+              <input type="text" name="versionName" required placeholder="Early Release" autoFocus />
+            </div>
+            <div className="field-row">
+              <label>Start from</label>
+              <select name="copyFrom" defaultValue="">
+                <option value="">Blank</option>
+                {scheduleVersions.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    Copy of {v.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="form-actions">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAddingVersion(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm">
+              Create
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {viewing ? (
+        <div className="sched-version-bar">
+          {renamingId === viewing.id ? (
+            <form
+              className="sched-rename-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = e.currentTarget;
+                const name = (f.elements.namedItem("name") as HTMLInputElement).value;
+                renameScheduleVersion(viewing.id, name);
+                setRenamingId(null);
+              }}
+            >
+              <input type="text" name="name" defaultValue={viewing.name} autoFocus />
+              <button type="submit" className="btn btn-primary btn-sm">
+                Save
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRenamingId(null)}>
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <div className="sched-version-info">
+              {activeScheduleId === viewing.id ? (
+                <span>This is the default schedule shown on Today.</span>
+              ) : (
+                <span>Viewing “{viewing.name}” — not the default right now.</span>
+              )}
+            </div>
+          )}
+          <div className="sched-version-actions">
+            {activeScheduleId !== viewing.id ? (
+              <button className="btn btn-sm" onClick={() => setActiveSchedule(viewing.id)}>
+                Use for today
+              </button>
+            ) : null}
+            {renamingId !== viewing.id ? (
+              <button className="btn-ghost btn-sm" onClick={() => setRenamingId(viewing.id)}>
+                <PencilIcon /> Rename
+              </button>
+            ) : null}
+            {scheduleVersions.length > 1 ? (
+              <button
+                className="btn-danger-ghost"
+                onClick={() => {
+                  if (confirm(`Delete the "${viewing.name}" schedule? This can't be undone.`)) {
+                    deleteScheduleVersion(viewing.id);
+                  }
+                }}
+              >
+                <TrashIcon /> Delete
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {addingPeriod && viewing ? (
         <PeriodForm
           classes={classes}
           submitLabel="Add"
           onCancel={() => setAddingPeriod(false)}
           onSubmit={(data) => {
-            addPeriod(data);
+            addPeriod(viewing.id, data);
             setAddingPeriod(false);
           }}
         />
@@ -167,7 +312,7 @@ export default function SchedulePage() {
                             submitLabel="Save"
                             onCancel={() => setEditingId(null)}
                             onSubmit={(data) => {
-                              updatePeriod(p.id, data);
+                              if (viewing) updatePeriod(viewing.id, p.id, data);
                               setEditingId(null);
                             }}
                           />
@@ -211,7 +356,10 @@ export default function SchedulePage() {
                       <button className="btn-ghost btn-sm" onClick={() => setEditingId(p.id)}>
                         <PencilIcon />
                       </button>{" "}
-                      <button className="btn-danger-ghost" onClick={() => deletePeriod(p.id)}>
+                      <button
+                        className="btn-danger-ghost"
+                        onClick={() => viewing && deletePeriod(viewing.id, p.id)}
+                      >
                         <TrashIcon />
                       </button>
                     </td>

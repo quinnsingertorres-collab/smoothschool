@@ -40,6 +40,12 @@ export interface Period {
   classId: string | null;
 }
 
+export interface ScheduleVersion {
+  id: string;
+  name: string;
+  periods: Period[];
+}
+
 export const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 export type DayKey = (typeof DAY_KEYS)[number];
 
