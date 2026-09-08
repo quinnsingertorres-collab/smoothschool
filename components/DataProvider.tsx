@@ -108,12 +108,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ? (snap.data() as { versions?: ScheduleVersion[]; activeVersionId?: string; periods?: Period[] })
           : {};
         if (data.versions && data.versions.length) {
-          setScheduleVersions(data.versions);
-          setActiveScheduleIdRaw(
-            data.activeVersionId && data.versions.some((v) => v.id === data.activeVersionId)
+          // Backfill any preset schedule versions that don't exist yet by name
+          // (e.g. an account that already had a "Regular" schedule before the
+          // Early Release / Advisory Activity / Extended Advisory presets shipped),
+          // and refill an empty "Regular" version's periods from the preset too.
+          const presets = defaultScheduleVersions();
+          const existingNames = new Set(data.versions.map((v) => v.name));
+          const missingPresets = presets.filter((v) => v.name !== "Regular" && !existingNames.has(v.name));
+          let changed = missingPresets.length > 0;
+          let versions = data.versions.map((v) => {
+            if (v.name === "Regular" && v.periods.length === 0) {
+              changed = true;
+              const regularPreset = presets.find((p) => p.name === "Regular");
+              return regularPreset ? { ...v, periods: regularPreset.periods } : v;
+            }
+            return v;
+          });
+          if (missingPresets.length) versions = [...versions, ...missingPresets];
+          const activeId =
+            data.activeVersionId && versions.some((v) => v.id === data.activeVersionId)
               ? data.activeVersionId
-              : data.versions[0].id
-          );
+              : versions[0].id;
+          setScheduleVersions(versions);
+          setActiveScheduleIdRaw(activeId);
+          if (changed && db) {
+            setDoc(doc(db, "schedule", "main"), { versions, activeVersionId: activeId });
+          }
         } else if (data.periods && data.periods.length) {
           // Legacy shape from before multiple schedule versions existed — migrate in place.
           const legacyId = uid();
