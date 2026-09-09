@@ -1048,7 +1048,7 @@ table.sched tr.current-row {
   border: 1px solid var(--line);
   border-left: 3px solid var(--violet);
   border-radius: 8px;
-  padding: 7px 9px;
+  padding: 7px 40px 7px 9px;
   font-size: 12px;
   position: relative;
 }
@@ -1067,10 +1067,10 @@ table.sched tr.current-row {
   margin-top: 2px;
   font-size: 11px;
 }
+.block .b-edit,
 .block .b-del {
   position: absolute;
   top: 5px;
-  right: 5px;
   background: none;
   border: none;
   color: var(--ink-faint);
@@ -1080,13 +1080,25 @@ table.sched tr.current-row {
   opacity: 0;
   transition: opacity 0.12s;
 }
+.block .b-edit {
+  right: 22px;
+}
+.block .b-del {
+  right: 5px;
+}
+.block:hover .b-edit,
 .block:hover .b-del {
   opacity: 1;
+}
+.block .b-edit:hover {
+  color: var(--violet);
+  background: var(--violet-soft);
 }
 .block .b-del:hover {
   color: var(--danger);
   background: var(--danger-soft);
 }
+.block .b-edit svg,
 .block .b-del svg {
   width: 11px;
   height: 11px;

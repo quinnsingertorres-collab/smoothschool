@@ -79,6 +79,7 @@ interface DataContextValue {
   autoFillClasses: () => number;
 
   addPlannerBlock: (day: DayKey, block: Omit<PlannerBlock, "id">) => void;
+  updatePlannerBlock: (day: DayKey, blockId: string, patch: Partial<Omit<PlannerBlock, "id">>) => void;
   deletePlannerBlock: (day: DayKey, blockId: string) => void;
 
   addNoSchoolDay: (date: string, reason: string) => void;
@@ -349,6 +350,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const next = { ...planner, [day]: [...(planner[day] || []), { ...block, id: uid() }] };
     savePlanner(next);
   }
+  function updatePlannerBlock(day: DayKey, blockId: string, patch: Partial<Omit<PlannerBlock, "id">>) {
+    const next = {
+      ...planner,
+      [day]: (planner[day] || []).map((b) => (b.id === blockId ? { ...b, ...patch } : b)),
+    };
+    savePlanner(next);
+  }
   function deletePlannerBlock(day: DayKey, blockId: string) {
     const next = { ...planner, [day]: (planner[day] || []).filter((b) => b.id !== blockId) };
     savePlanner(next);
@@ -423,6 +431,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setScheduleActiveDays,
     autoFillClasses,
     addPlannerBlock,
+    updatePlannerBlock,
     deletePlannerBlock,
     addNoSchoolDay,
     deleteNoSchoolDay,
