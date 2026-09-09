@@ -23,7 +23,7 @@ import {
   ProjectItem,
   ScheduleVersion,
 } from "@/lib/types";
-import { uid } from "@/lib/date";
+import { uid, todayKey } from "@/lib/date";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { defaultScheduleVersions } from "@/lib/schedule-presets";
 import { autoMatchClasses } from "@/lib/schedule-match";
@@ -38,9 +38,10 @@ interface DataContextValue {
   dbReady: boolean; // Firebase configured AND the first read has come back
   dbConfigured: boolean; // Firebase config values are present at all
   classes: ClassData[];
-  schedule: Period[]; // periods of the active (default) schedule version
+  schedule: Period[]; // periods of whichever version is actually showing today
   scheduleVersions: ScheduleVersion[];
-  activeScheduleId: string;
+  activeScheduleId: string; // the manually-set default/fallback version
+  todaysScheduleId: string; // the version actually in effect today (a day-matched version wins over the default)
   planner: PlannerDoc;
   noSchoolDays: NoSchoolDay[];
   noSchoolMap: Record<string, string>;
@@ -74,6 +75,7 @@ interface DataContextValue {
   renameScheduleVersion: (id: string, name: string) => void;
   deleteScheduleVersion: (id: string) => void;
   setActiveSchedule: (id: string) => void;
+  setScheduleActiveDays: (id: string, days: DayKey[]) => void;
   autoFillClasses: () => number;
 
   addPlannerBlock: (day: DayKey, block: Omit<PlannerBlock, "id">) => void;
@@ -316,6 +318,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     saveScheduleState(scheduleVersions, id);
   }
 
+  function setScheduleActiveDays(id: string, days: DayKey[]) {
+    saveScheduleState(
+      scheduleVersions.map((v) => (v.id === id ? { ...v, activeDays: days } : v)),
+      activeScheduleId
+    );
+  }
+
   function autoFillClasses(): number {
     let filledCount = 0;
     const versions = scheduleVersions.map((v) => {
@@ -371,10 +380,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return m;
   }, [noSchoolDays]);
 
-  const schedule = useMemo(() => {
-    const active = scheduleVersions.find((v) => v.id === activeScheduleId) || scheduleVersions[0];
-    return active ? active.periods : [];
+  // A version with today's weekday in its activeDays takes over automatically
+  // (a recurring pattern, e.g. "Mondays"); otherwise fall back to whichever
+  // version is set as the default.
+  const todaysVersion = useMemo(() => {
+    const dayKey = todayKey();
+    const autoMatch = scheduleVersions.find((v) => v.activeDays && v.activeDays.length && v.activeDays.includes(dayKey));
+    return autoMatch || scheduleVersions.find((v) => v.id === activeScheduleId) || scheduleVersions[0];
   }, [scheduleVersions, activeScheduleId]);
+
+  const schedule = todaysVersion ? todaysVersion.periods : [];
+  const todaysScheduleId = todaysVersion ? todaysVersion.id : "";
 
   const value: DataContextValue = {
     dbReady: firebaseReady && gotFirstSnapshot,
@@ -383,6 +399,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     schedule,
     scheduleVersions,
     activeScheduleId,
+    todaysScheduleId,
     planner,
     noSchoolDays,
     noSchoolMap,
@@ -403,6 +420,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     renameScheduleVersion,
     deleteScheduleVersion,
     setActiveSchedule,
+    setScheduleActiveDays,
     autoFillClasses,
     addPlannerBlock,
     deletePlannerBlock,

@@ -3,8 +3,9 @@
 import React, { useState } from "react";
 import { useData } from "@/components/DataProvider";
 import { PlusIcon, PencilIcon, TrashIcon, CalendarOffIcon } from "@/components/Icons";
+import { DayPicker } from "@/components/DayPicker";
 import { fmtTime, nowHM, todayISO, fmtDate } from "@/lib/date";
-import { Period, PeriodType } from "@/lib/types";
+import { DAY_LABELS, Period, PeriodType } from "@/lib/types";
 
 function sortedPeriods(periods: Period[]) {
   return [...periods].sort((a, b) => (a.start || "").localeCompare(b.start || ""));
@@ -93,7 +94,9 @@ export default function SchedulePage() {
   const {
     scheduleVersions,
     activeScheduleId,
+    todaysScheduleId,
     setActiveSchedule,
+    setScheduleActiveDays,
     addScheduleVersion,
     renameScheduleVersion,
     deleteScheduleVersion,
@@ -170,6 +173,9 @@ export default function SchedulePage() {
           >
             {v.name}
             {activeScheduleId === v.id ? <span className="sched-tab-badge">Default</span> : null}
+            {v.activeDays && v.activeDays.length ? (
+              <span className="sched-tab-badge sched-tab-badge-days">{v.activeDays.map((d) => DAY_LABELS[d]).join("/")}</span>
+            ) : null}
           </button>
         ))}
         <button
@@ -245,17 +251,22 @@ export default function SchedulePage() {
             </form>
           ) : (
             <div className="sched-version-info">
-              {activeScheduleId === viewing.id ? (
-                <span>This is the default schedule shown on Today.</span>
+              {todaysScheduleId === viewing.id ? (
+                <span>
+                  This is what&apos;s showing on Today
+                  {activeScheduleId === viewing.id ? "" : " (auto-selected for today's weekday)"}.
+                </span>
+              ) : activeScheduleId === viewing.id ? (
+                <span>This is the default — it&apos;ll show whenever no day-specific schedule below takes over.</span>
               ) : (
-                <span>Viewing “{viewing.name}” — not the default right now.</span>
+                <span>Viewing “{viewing.name}” — not showing today.</span>
               )}
             </div>
           )}
           <div className="sched-version-actions">
             {activeScheduleId !== viewing.id ? (
               <button className="btn btn-sm" onClick={() => setActiveSchedule(viewing.id)}>
-                Use for today
+                Use as default
               </button>
             ) : null}
             {renamingId !== viewing.id ? (
@@ -276,6 +287,18 @@ export default function SchedulePage() {
               </button>
             ) : null}
           </div>
+        </div>
+      ) : null}
+
+      {viewing ? (
+        <div className="sched-autodays-bar">
+          <span className="sched-autodays-label">Auto-show on</span>
+          <DayPicker value={viewing.activeDays || []} onChange={(days) => setScheduleActiveDays(viewing.id, days)} />
+          <span className="sub" style={{ fontSize: 12 }}>
+            {viewing.activeDays && viewing.activeDays.length
+              ? `Automatically takes over on ${viewing.activeDays.map((d) => DAY_LABELS[d]).join(", ")}, no matter which schedule is set as default.`
+              : "Pick specific weekdays to have this schedule take over automatically, e.g. a different Monday lineup."}
+          </span>
         </div>
       ) : null}
 

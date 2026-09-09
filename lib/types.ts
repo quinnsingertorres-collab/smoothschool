@@ -45,6 +45,7 @@ export interface ScheduleVersion {
   id: string;
   name: string;
   periods: Period[];
+  activeDays?: DayKey[]; // if set, this version automatically shows on Today on these weekdays
 }
 
 export const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;

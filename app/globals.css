@@ -121,7 +121,7 @@ button {
 
 #app {
   display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -275,6 +275,7 @@ button {
 #main {
   padding: 34px 42px 60px;
   width: 100%;
+  min-width: 0;
 }
 .page-head {
   display: flex;
@@ -524,7 +525,7 @@ button {
 
 .dash-grid {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
   gap: 22px;
   align-items: start;
 }
@@ -587,7 +588,7 @@ button {
 
 .class-tiles {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 .class-tile {
@@ -877,6 +878,10 @@ select.status-select {
   padding: 2px 7px;
   border-radius: 20px;
 }
+.sched-tab-badge-days {
+  background: var(--violet-soft);
+  color: var(--violet-deep);
+}
 .sched-version-bar {
   display: flex;
   align-items: center;
@@ -906,6 +911,22 @@ select.status-select {
 }
 .sched-rename-form input {
   max-width: 220px;
+}
+.sched-autodays-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+}
+.sched-autodays-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  flex-shrink: 0;
 }
 
 /* Schedule */
