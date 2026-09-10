@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   doc,
@@ -23,7 +23,7 @@ import {
   ProjectItem,
   ScheduleVersion,
 } from "@/lib/types";
-import { uid, todayKey } from "@/lib/date";
+import { uid, todayKey, pastOneOnDueDate } from "@/lib/date";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { defaultScheduleVersions } from "@/lib/schedule-presets";
 import { autoMatchClasses } from "@/lib/schedule-match";
@@ -37,6 +37,7 @@ function emptyPlanner(): PlannerDoc {
 interface DataContextValue {
   dbReady: boolean; // Firebase configured AND the first read has come back
   dbConfigured: boolean; // Firebase config values are present at all
+  isOnline: boolean; // false when the browser has no network connection right now
   classes: ClassData[];
   schedule: Period[]; // periods of whichever version is actually showing today
   scheduleVersions: ScheduleVersion[];
@@ -101,6 +102,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [planner, setPlanner] = useState<PlannerDoc>(emptyPlanner());
   const [noSchoolDays, setNoSchoolDays] = useState<NoSchoolDay[]>([]);
   const [gotFirstSnapshot, setGotFirstSnapshot] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined") setIsOnline(navigator.onLine);
+    function goOnline() {
+      setIsOnline(true);
+    }
+    function goOffline() {
+      setIsOnline(false);
+    }
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (!db) return;
@@ -179,6 +197,31 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const { id, ...data } = c;
     setDoc(doc(db, "classes", id), data);
   }
+
+  // Auto-clear homework that's done and past its due-date cutoff (1:00 PM on
+  // the day it was due) -- everything else (not done, or not past the
+  // cutoff yet) is left alone.
+  const classesRef = useRef<ClassData[]>(classes);
+  function sweepDoneHomework(list: ClassData[]) {
+    for (const c of list) {
+      const kept = (c.homework || []).filter((h) => !(h.done && pastOneOnDueDate(h.dueDate)));
+      if (kept.length !== (c.homework || []).length) {
+        saveClass({ ...c, homework: kept });
+      }
+    }
+  }
+  useEffect(() => {
+    classesRef.current = classes;
+    sweepDoneHomework(classes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classes]);
+  useEffect(() => {
+    // Also sweep on a timer so a done item disappears right at 1:00 PM even
+    // if the app is just sitting open with nothing else changing.
+    const interval = setInterval(() => sweepDoneHomework(classesRef.current), 60_000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function addClass(input: {
     name: string;
@@ -403,6 +446,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const value: DataContextValue = {
     dbReady: firebaseReady && gotFirstSnapshot,
     dbConfigured: firebaseReady,
+    isOnline,
     classes,
     schedule,
     scheduleVersions,

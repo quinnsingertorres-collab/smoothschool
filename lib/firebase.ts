@@ -1,5 +1,11 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  type Firestore,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -20,7 +26,21 @@ let db: Firestore | null = null;
 
 if (firebaseReady && typeof window !== "undefined") {
   app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  db = getFirestore(app);
+  try {
+    // Persist to IndexedDB so classes/homework/schedule are readable -- and
+    // still editable -- with poor or no connectivity (spotty wifi, cell
+    // dead zones, airplane mode). Anything added or changed while offline
+    // is queued locally and synced automatically once back online, and
+    // survives closing the tab/app in the meantime.
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    // Falls back to the default in-memory cache if persistence can't be set
+    // up (e.g. an unsupported browser, or Firestore was already initialized
+    // for this app elsewhere -- such as during dev hot-reload).
+    db = getFirestore(app);
+  }
 }
 
 export { app, db };

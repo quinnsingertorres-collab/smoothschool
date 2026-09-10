@@ -28,7 +28,7 @@ function greeting(hour: number) {
 }
 
 export default function HomePage() {
-  const { classes, schedule, noSchoolMap, dbConfigured, dbReady, classById } = useData();
+  const { classes, schedule, noSchoolMap, dbConfigured, dbReady, isOnline, classById } = useData();
   const openAddClass = useOpenAddClass();
 
   const today = new Date();
@@ -65,6 +65,8 @@ export default function HomePage() {
               ? "Loading…"
               : !dbConfigured
               ? "Firebase isn't configured yet — changes won't be saved. See the README."
+              : !isOnline
+              ? "You're offline — changes you make now will save and sync once you're back online."
               : noSchoolReason
               ? "No school today"
               : ps.length

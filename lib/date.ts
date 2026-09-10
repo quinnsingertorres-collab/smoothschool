@@ -49,6 +49,18 @@ export function daysUntil(iso: string): number | null {
   return Math.round((d.getTime() - today.getTime()) / 86400000);
 }
 
+// True once it's past 1:00 PM (local time) on the given due date -- i.e. any
+// day after the due date, or the due date itself once the clock hits 13:00.
+// Used to auto-clear homework that's done and past its due-date cutoff.
+export function pastOneOnDueDate(dueDate: string): boolean {
+  if (!dueDate) return false;
+  const n = daysUntil(dueDate);
+  if (n === null) return false;
+  if (n < 0) return true;
+  if (n === 0) return nowHM() >= "13:00";
+  return false;
+}
+
 export function dueBadge(iso: string): { cls: "overdue" | "soon" | "later"; label: string } {
   const n = daysUntil(iso);
   if (n === null) return { cls: "later", label: fmtDate(iso) };
