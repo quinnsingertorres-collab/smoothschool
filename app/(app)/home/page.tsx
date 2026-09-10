@@ -154,6 +154,7 @@ export default function HomePage() {
               {classes.map((c) => {
                 const openHw = (c.homework || []).filter((h) => !h.done).length;
                 const meetsToday = meetsOnDay(c.days, todayDayKey);
+                const noHomeworkToday = c.noHomeworkDate === todayISO();
                 return (
                   <Link href={`/${c.id}`} className={"class-tile" + (meetsToday ? "" : " not-today")} key={c.id}>
                     <div className="top">
@@ -165,8 +166,8 @@ export default function HomePage() {
                       {c.teacher ? c.teacher + " · " : ""}
                       {c.room ? "Rm " + c.room : ""}
                     </div>
-                    <div className="meta">
-                      {openHw} open homework item{openHw === 1 ? "" : "s"}
+                    <div className={"meta" + (noHomeworkToday ? " no-hw-today" : "")}>
+                      {noHomeworkToday ? "No homework today" : `${openHw} open homework item${openHw === 1 ? "" : "s"}`}
                     </div>
                   </Link>
                 );

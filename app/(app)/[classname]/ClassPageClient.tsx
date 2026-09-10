@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useData } from "@/components/DataProvider";
 import { PencilIcon, TrashIcon, PlusIcon, ExtLinkIcon, CheckIcon } from "@/components/Icons";
 import { DayPicker, formatDays } from "@/components/DayPicker";
-import { fmtDate, dueBadge } from "@/lib/date";
+import { fmtDate, dueBadge, todayISO } from "@/lib/date";
 import { CLASS_COLORS, DayKey, ProjectItem } from "@/lib/types";
 
 function hexToSoft(hex: string) {
@@ -20,8 +20,18 @@ function linkHref(url: string) {
 }
 
 export function ClassPageClient({ slug }: { slug: string }) {
-  const { classById, updateClassInfo, deleteClass, addHomework, toggleHomework, deleteHomework, addProject, setProjectStatus, deleteProject } =
-    useData();
+  const {
+    classById,
+    updateClassInfo,
+    deleteClass,
+    addHomework,
+    toggleHomework,
+    deleteHomework,
+    setNoHomeworkToday,
+    addProject,
+    setProjectStatus,
+    deleteProject,
+  } = useData();
   const c = classById(slug);
 
   const [editingInfo, setEditingInfo] = useState(false);
@@ -43,6 +53,7 @@ export function ClassPageClient({ slug }: { slug: string }) {
   }
 
   const hw = [...(c.homework || [])].sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"));
+  const noHomeworkToday = c.noHomeworkDate === todayISO();
   const projects = [...(c.projects || [])].sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"));
 
   return (
@@ -199,9 +210,17 @@ export function ClassPageClient({ slug }: { slug: string }) {
       <div className="section">
         <div className="section-title">
           Homework
-          <button className="btn btn-sm" onClick={() => setHwFormOpen((v) => !v)}>
-            <PlusIcon /> Add
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className={"btn btn-sm" + (noHomeworkToday ? " btn-active" : " btn-ghost")}
+              onClick={() => setNoHomeworkToday(c.id, !noHomeworkToday)}
+            >
+              {noHomeworkToday ? <CheckIcon /> : null} No homework today
+            </button>
+            <button className="btn btn-sm" onClick={() => setHwFormOpen((v) => !v)}>
+              <PlusIcon /> Add
+            </button>
+          </div>
         </div>
         {hwFormOpen ? (
           <form
@@ -215,6 +234,7 @@ export function ClassPageClient({ slug }: { slug: string }) {
                 title,
                 dueDate: (f.elements.namedItem("dueDate") as HTMLInputElement).value,
                 notes: (f.elements.namedItem("notes") as HTMLInputElement).value.trim(),
+                optional: (f.elements.namedItem("optional") as HTMLInputElement).checked,
               });
               setHwFormOpen(false);
             }}
@@ -232,6 +252,10 @@ export function ClassPageClient({ slug }: { slug: string }) {
                 <label>Notes (optional)</label>
                 <input type="text" name="notes" placeholder="Pages, materials, anything to remember" />
               </div>
+              <label className="checkbox-field" style={{ gridColumn: "1/-1" }}>
+                <input type="checkbox" name="optional" />
+                Optional — clear it automatically at the end of its due date, done or not
+              </label>
             </div>
             <div className="form-actions">
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setHwFormOpen(false)}>
@@ -246,8 +270,8 @@ export function ClassPageClient({ slug }: { slug: string }) {
         <div className="card">
           {!hw.length ? (
             <div className="empty" style={{ border: "none" }}>
-              <h3>No homework yet</h3>
-              <p>Add an assignment to start tracking it.</p>
+              <h3>{noHomeworkToday ? "No homework today" : "No homework yet"}</h3>
+              <p>{noHomeworkToday ? "Marked — this'll reset tomorrow." : "Add an assignment to start tracking it."}</p>
             </div>
           ) : (
             hw.map((h) => {
@@ -258,7 +282,10 @@ export function ClassPageClient({ slug }: { slug: string }) {
                     {h.done ? <CheckIcon /> : null}
                   </button>
                   <div className="hw-main">
-                    <div className={"hw-title" + (h.done ? " done" : "")}>{h.title}</div>
+                    <div className={"hw-title" + (h.done ? " done" : "")}>
+                      {h.title}
+                      {h.optional ? <span className="optional-tag">Optional</span> : null}
+                    </div>
                     {h.notes ? <div className="hw-notes">{h.notes}</div> : null}
                     {h.dueDate ? (
                       <div className={"hw-due" + (!h.done && b ? " " + b.cls : "")}>{h.done ? fmtDate(h.dueDate) : b?.label}</div>

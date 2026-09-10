@@ -23,7 +23,7 @@ import {
   ProjectItem,
   ScheduleVersion,
 } from "@/lib/types";
-import { uid, todayKey, pastOneOnDueDate } from "@/lib/date";
+import { uid, todayKey, todayISO, pastOneOnDueDate, pastEndOfDueDate } from "@/lib/date";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { defaultScheduleVersions } from "@/lib/schedule-presets";
 import { autoMatchClasses } from "@/lib/schedule-match";
@@ -63,6 +63,7 @@ interface DataContextValue {
   addHomework: (classId: string, item: Omit<HomeworkItem, "id" | "done">) => void;
   toggleHomework: (classId: string, hwId: string) => void;
   deleteHomework: (classId: string, hwId: string) => void;
+  setNoHomeworkToday: (classId: string, value: boolean) => void;
 
   addProject: (classId: string, item: Omit<ProjectItem, "id">) => void;
   setProjectStatus: (classId: string, projId: string, status: ProjectItem["status"]) => void;
@@ -198,13 +199,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setDoc(doc(db, "classes", id), data);
   }
 
-  // Auto-clear homework that's done and past its due-date cutoff (1:00 PM on
-  // the day it was due) -- everything else (not done, or not past the
-  // cutoff yet) is left alone.
+  // Auto-clear homework that's either:
+  //  - done, and past its due-date cutoff (1:00 PM on the day it was due), or
+  //  - marked "optional", once its due date has fully ended (whether it was
+  //    ever done or not).
+  // Everything else is left alone.
   const classesRef = useRef<ClassData[]>(classes);
+  function shouldClearHomework(h: HomeworkItem): boolean {
+    if (h.optional) return pastEndOfDueDate(h.dueDate);
+    return h.done && pastOneOnDueDate(h.dueDate);
+  }
   function sweepDoneHomework(list: ClassData[]) {
     for (const c of list) {
-      const kept = (c.homework || []).filter((h) => !(h.done && pastOneOnDueDate(h.dueDate)));
+      const kept = (c.homework || []).filter((h) => !shouldClearHomework(h));
       if (kept.length !== (c.homework || []).length) {
         saveClass({ ...c, homework: kept });
       }
@@ -247,6 +254,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       homework: [],
       projects: [],
       days: input.days && input.days.length ? input.days : [],
+      noHomeworkDate: "",
     };
     if (!db) {
       setClasses((prev) => [...prev, newClass]);
@@ -275,7 +283,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const c = classById(classId);
     if (!c) return;
     const homework = [...(c.homework || []), { ...item, id: uid(), done: false }];
-    saveClass({ ...c, homework });
+    // Adding a real assignment supersedes any earlier "no homework" mark.
+    saveClass({ ...c, homework, noHomeworkDate: "" });
+  }
+  function setNoHomeworkToday(classId: string, value: boolean) {
+    const c = classById(classId);
+    if (!c) return;
+    saveClass({ ...c, noHomeworkDate: value ? todayISO() : "" });
   }
   function toggleHomework(classId: string, hwId: string) {
     const c = classById(classId);
@@ -462,6 +476,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     addHomework,
     toggleHomework,
     deleteHomework,
+    setNoHomeworkToday,
     addProject,
     setProjectStatus,
     deleteProject,

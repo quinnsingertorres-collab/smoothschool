@@ -61,6 +61,15 @@ export function pastOneOnDueDate(dueDate: string): boolean {
   return false;
 }
 
+// True once the due date itself has fully ended (i.e. it's now a later
+// calendar day) -- used to auto-clear "optional" homework at end of day on
+// its due date, regardless of whether it was ever marked done.
+export function pastEndOfDueDate(dueDate: string): boolean {
+  if (!dueDate) return false;
+  const n = daysUntil(dueDate);
+  return n !== null && n < 0;
+}
+
 export function dueBadge(iso: string): { cls: "overdue" | "soon" | "later"; label: string } {
   const n = daysUntil(iso);
   if (n === null) return { cls: "later", label: fmtDate(iso) };

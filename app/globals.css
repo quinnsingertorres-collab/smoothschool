@@ -359,6 +359,18 @@ button {
   padding: 5px 10px;
   font-size: 12.5px;
 }
+.btn-active {
+  background: var(--violet-soft);
+  border-color: var(--violet-soft-line);
+  color: var(--violet-deep);
+}
+.btn-active:hover {
+  border-color: var(--violet);
+}
+.btn-active svg {
+  width: 13px;
+  height: 13px;
+}
 .btn-block {
   width: 100%;
   justify-content: center;
@@ -638,6 +650,10 @@ button {
   font-size: 11.5px;
   color: var(--ink-faint);
 }
+.class-tile .meta.no-hw-today {
+  color: var(--violet-deep);
+  font-weight: 600;
+}
 
 /* Class detail */
 .class-banner {
@@ -733,6 +749,20 @@ textarea {
   gap: 8px;
   justify-content: flex-end;
 }
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.checkbox-field input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--violet);
+  cursor: pointer;
+}
 .inline-form {
   background: var(--surface-2);
   border: 1px solid var(--line);
@@ -784,6 +814,20 @@ textarea {
 .hw-title.done {
   text-decoration: line-through;
   color: var(--ink-faint);
+}
+.optional-tag {
+  display: inline-block;
+  margin-left: 7px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+  border-radius: 20px;
+  vertical-align: middle;
 }
 .hw-notes {
   font-size: 12px;

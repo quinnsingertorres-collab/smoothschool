@@ -4,6 +4,7 @@ export interface HomeworkItem {
   dueDate: string; // YYYY-MM-DD, or ""
   notes: string;
   done: boolean;
+  optional: boolean; // if true, this clears at the end of the due date regardless of done
 }
 
 export interface ProjectItem {
@@ -28,6 +29,7 @@ export interface ClassData {
   homework: HomeworkItem[];
   projects: ProjectItem[];
   days?: DayKey[]; // which days it meets — empty/undefined means every school day
+  noHomeworkDate: string; // YYYY-MM-DD, or "" -- set when marked "no homework" for that date
 }
 
 export type PeriodType = "class" | "lunch" | "other";
