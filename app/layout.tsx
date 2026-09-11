@@ -9,6 +9,14 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "SmoothSchool",
   },
+  other: {
+    // Next's `appleWebApp.capable` only emits the modern, unprefixed
+    // "mobile-web-app-capable" tag. Older iOS/iPadOS versions (and some
+    // current ones) only honor the classic Apple-prefixed tag to actually
+    // hide Safari's address bar in a home-screen-added app -- without it,
+    // the icon opens as a regular bookmark with full browser chrome.
+    "apple-mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport: Viewport = {
