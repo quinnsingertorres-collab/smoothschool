@@ -22,6 +22,11 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!login|api/login|_next/static|_next/image|favicon.ico|icon.png|brand-mark.png).*)",
+    // apple-icon.png and manifest.webmanifest are fetched by iOS/browsers
+    // as part of the "Add to Home Screen" / standalone-app machinery, not
+    // always with the auth cookie attached -- gating them behind login can
+    // make the manifest silently fail to load, which drops the "scope" the
+    // OS needs to keep the whole app in standalone mode across navigation.
+    "/((?!login|api/login|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|manifest.webmanifest|brand-mark.png).*)",
   ],
 };
