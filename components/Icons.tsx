@@ -72,6 +72,15 @@ export function PencilIcon(p: IconProps) {
     </svg>
   );
 }
+export function MenuIcon(p: IconProps) {
+  return (
+    <svg {...base} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className={p.className}>
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+    </svg>
+  );
+}
 export function XIcon(p: IconProps) {
   return (
     <svg {...base} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className={p.className}>

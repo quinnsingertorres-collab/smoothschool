@@ -21,6 +21,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#4C1D95",
+  // Lets the page draw under the notch/home-indicator safe areas so the
+  // mobile top bar and bottom padding can use env(safe-area-inset-*) to
+  // avoid sitting flush against them.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
