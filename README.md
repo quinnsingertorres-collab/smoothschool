@@ -50,26 +50,15 @@ only for the current browser tab.
 6. In the left sidebar: **Build → Firestore Database → Create
    database**. Choose a location close to you, and start in
    **production mode** (the rules below replace the default).
-7. Once it's created, go to the **Rules** tab and replace the contents
-   with:
-
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /{document=**} {
-         allow read, write: if true;
-       }
-     }
-   }
-   ```
-
-   **What this means:** anyone who has your Firestore project id can
-   read and write this data — there's no login built into this app.
-   That's fine for a personal homework tracker nobody else knows the
-   id of, but don't put anything sensitive in it. If you'd like real
-   login-gated access later, that's a follow-up (Firebase Auth) worth
-   asking for.
+7. Once it's created, go to the **Rules** tab and paste in the contents
+   of [`firestore.rules`](firestore.rules) from this repo, then
+   **Publish**. Each account can only read and write its own data under
+   `users/{uid}/…`.
+8. In the left sidebar: **Build → Authentication → Get started →
+   Sign-in method → Email/Password → Enable → Save**. The app uses
+   usernames, but under the hood each username is stored as a
+   Firebase email-style login (`<username>@users.smoothschool.app`) —
+   nobody ever sees or needs that address.
 
 ### 2b. Add your Firebase keys locally
 
@@ -91,26 +80,22 @@ only for the current browser tab.
    boundary is the Firestore rules above, not hiding this config — but
    there's no reason to publish them either.)
 
-## 2c. Optional: put a password on the app
+## 2c. Accounts
 
-By default anyone with the URL can open the app. To require a password
-first, set one environment variable:
+Anyone can open `/login`, pick **Create an account**, and choose a
+username and password. Every account gets its own classes, homework,
+schedules, planner and days off — nobody can see anyone else's.
 
-```
-APP_PASSWORD=yourpassword
-```
+In **Settings** (sidebar) each person can set their name and the app's
+name. By default the app is called "<Name>'s School"; type anything in
+**App name** to override it. The name shows in the sidebar, the mobile
+top bar and the browser tab.
 
-Add it to `.env.local` for local dev, and to Vercel's Environment
-Variables for the live site (same place as the Firebase keys). Leave it
-unset to leave the app open — no password screen appears.
-
-This is a single shared password for the whole app, not a real login
-system, and it only gates the Next.js pages. The Firestore rules above
-are still `allow read, write: if true`, so the data itself remains
-readable by anyone with the Firebase config values (which ship in the
-public JS bundle regardless). Think of it as a "don't share this link"
-lock on the front door, not a vault — good enough to keep the site from
-being casually stumbled on, not a substitute for real auth.
+**Moving over data from before accounts existed:** sign in to your
+account, open **Settings**, and click **Import old data**. That copies
+the old shared classes/schedule/planner into your account. Do this
+*before* publishing the rules in `firestore.rules` — once they're live
+the old data is locked away and the import button disappears.
 
 ## 3. Run it locally
 
@@ -129,8 +114,7 @@ double check `.env.local`.
    login is easiest).
 2. **Import** the `smoothschool` repo you pushed in step 1.
 3. Before clicking Deploy, open **Environment Variables** and add the
-   same six `NEXT_PUBLIC_FIREBASE_*` values from your `.env.local`
-   (plus `APP_PASSWORD` if you set one). Vercel can't read your local
+   same six `NEXT_PUBLIC_FIREBASE_*` values from your `.env.local`. Vercel can't read your local
    `.env.local` file — it needs its own copy.
 4. Click **Deploy**. Vercel will build and give you a live URL
    (`smoothschool-<something>.vercel.app`); every future push to
@@ -144,12 +128,12 @@ app/
   (app)/planner/   weekly after-school planner
   (app)/schedule/  periods, lunch block, and days-off (no school)
   (app)/[classname]/  one page per class, e.g. /ap-biology
-  login/           password screen (only shown if APP_PASSWORD is set)
+  (app)/settings/  your name, app name, import old data, log out
+  login/           sign in / create account
   api/weather/     server route that calls the free NWS weather API
-  api/login/        api/logout/  password check + session cookie
-proxy.ts            gates every page behind APP_PASSWORD, if set
-components/        Sidebar, add-class modal, shared icons, weather widget
-lib/               Firestore data model, date/slug helpers, password check
+components/        AuthProvider (accounts), AuthGate, Sidebar, add-class modal, icons, weather
+lib/               Firestore data model, date/slug helpers, legacy-data import
+firestore.rules    per-account Firestore security rules
 ```
 
 Each class's page lives at `/<slugified-class-name>` (e.g. "AP

@@ -10,7 +10,7 @@ import {
   setDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { db, firebaseReady } from "@/lib/firebase";
+import { db as firestoreDb, firebaseReady } from "@/lib/firebase";
 import {
   ClassData,
   DAY_KEYS,
@@ -96,7 +96,16 @@ export function useData(): DataContextValue {
   return ctx;
 }
 
-export function DataProvider({ children }: { children: React.ReactNode }) {
+export function DataProvider({ children, userId }: { children: React.ReactNode; userId: string | null }) {
+  // Every account's data lives under users/{uid}/... so accounts never see
+  // each other's classes. With no signed-in user there's nothing to read or
+  // write, and the app falls back to this-tab-only state (same as when
+  // Firebase isn't configured).
+  const db = userId ? firestoreDb : null;
+  const root = `users/${userId}`;
+  const col = (path: string) => collection(firestoreDb!, `${root}/${path}`);
+  const ref = (path: string) => doc(firestoreDb!, `${root}/${path}`);
+
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [scheduleVersions, setScheduleVersions] = useState<ScheduleVersion[]>(() => defaultScheduleVersions());
   const [activeScheduleId, setActiveScheduleIdRaw] = useState<string>(() => scheduleVersions[0]?.id || "");
@@ -124,11 +133,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!db) return;
     const unsubs = [
-      onSnapshot(query(collection(db, "classes"), orderBy("order", "asc")), (snap) => {
+      onSnapshot(query(col("classes"), orderBy("order", "asc")), (snap) => {
         setClasses(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassData, "id">) })));
         setGotFirstSnapshot(true);
       }),
-      onSnapshot(doc(db, "schedule", "main"), (snap) => {
+      onSnapshot(ref("schedule/main"), (snap) => {
         const data = snap.exists()
           ? (snap.data() as { versions?: ScheduleVersion[]; activeVersionId?: string; periods?: Period[] })
           : {};
@@ -157,7 +166,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setScheduleVersions(versions);
           setActiveScheduleIdRaw(activeId);
           if (changed && db) {
-            setDoc(doc(db, "schedule", "main"), { versions, activeVersionId: activeId });
+            setDoc(ref("schedule/main"), { versions, activeVersionId: activeId });
           }
         } else if (data.periods && data.periods.length) {
           // Legacy shape from before multiple schedule versions existed — migrate in place.
@@ -165,19 +174,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           const migrated: ScheduleVersion[] = [{ id: legacyId, name: "Regular", periods: data.periods }];
           setScheduleVersions(migrated);
           setActiveScheduleIdRaw(legacyId);
-          if (db) setDoc(doc(db, "schedule", "main"), { versions: migrated, activeVersionId: legacyId });
+          if (db) setDoc(ref("schedule/main"), { versions: migrated, activeVersionId: legacyId });
         } else {
           const seeded = defaultScheduleVersions();
           setScheduleVersions(seeded);
           setActiveScheduleIdRaw(seeded[0].id);
-          if (db) setDoc(doc(db, "schedule", "main"), { versions: seeded, activeVersionId: seeded[0].id });
+          if (db) setDoc(ref("schedule/main"), { versions: seeded, activeVersionId: seeded[0].id });
         }
       }),
-      onSnapshot(doc(db, "planner", "week"), (snap) => {
+      onSnapshot(ref("planner/week"), (snap) => {
         const data = snap.exists() ? (snap.data() as Partial<PlannerDoc>) : {};
         setPlanner({ ...emptyPlanner(), ...data });
       }),
-      onSnapshot(collection(db, "noSchoolDays"), (snap) => {
+      onSnapshot(col("noSchoolDays"), (snap) => {
         setNoSchoolDays(
           snap.docs
             .map((d) => ({ date: d.id, reason: (d.data().reason as string) || "" }))
@@ -186,7 +195,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }),
     ];
     return () => unsubs.forEach((u) => u());
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db, userId]);
 
   const classById = (id: string) => classes.find((c) => c.id === id);
 
@@ -196,7 +206,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     const { id, ...data } = c;
-    setDoc(doc(db, "classes", id), data);
+    setDoc(ref(`classes/${id}`), data);
   }
 
   // Auto-clear homework that's either:
@@ -261,7 +271,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return slug;
     }
     const { id, ...data } = newClass;
-    await setDoc(doc(db, "classes", id), data);
+    await setDoc(ref(`classes/${id}`), data);
     return slug;
   }
 
@@ -276,7 +286,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setClasses((prev) => prev.filter((c) => c.id !== id));
       return;
     }
-    deleteDoc(doc(db, "classes", id));
+    deleteDoc(ref(`classes/${id}`));
   }
 
   function addHomework(classId: string, item: Omit<HomeworkItem, "id" | "done">) {
@@ -326,7 +336,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   function saveScheduleState(versions: ScheduleVersion[], activeId: string) {
     setScheduleVersions(versions);
     setActiveScheduleIdRaw(activeId);
-    if (db) setDoc(doc(db, "schedule", "main"), { versions, activeVersionId: activeId });
+    if (db) setDoc(ref("schedule/main"), { versions, activeVersionId: activeId });
   }
 
   function addPeriod(versionId: string, p: Omit<Period, "id">) {
@@ -401,7 +411,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   function savePlanner(next: PlannerDoc) {
     setPlanner(next);
-    if (db) setDoc(doc(db, "planner", "week"), next);
+    if (db) setDoc(ref("planner/week"), next);
   }
   function addPlannerBlock(day: DayKey, block: Omit<PlannerBlock, "id">) {
     const next = { ...planner, [day]: [...(planner[day] || []), { ...block, id: uid() }] };
@@ -429,14 +439,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       );
       return;
     }
-    setDoc(doc(db, "noSchoolDays", date), { reason });
+    setDoc(ref(`noSchoolDays/${date}`), { reason });
   }
   function deleteNoSchoolDay(date: string) {
     if (!db) {
       setNoSchoolDays((prev) => prev.filter((d) => d.date !== date));
       return;
     }
-    deleteDoc(doc(db, "noSchoolDays", date));
+    deleteDoc(ref(`noSchoolDays/${date}`));
   }
 
   const noSchoolMap = useMemo(() => {
@@ -458,7 +468,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const todaysScheduleId = todaysVersion ? todaysVersion.id : "";
 
   const value: DataContextValue = {
-    dbReady: firebaseReady && gotFirstSnapshot,
+    dbReady: Boolean(db) && gotFirstSnapshot,
     dbConfigured: firebaseReady,
     isOnline,
     classes,

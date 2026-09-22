@@ -4,11 +4,13 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useData } from "@/components/DataProvider";
-import { GridIcon, ClockIcon, TableIcon, PlusIcon, MenuIcon, XIcon } from "@/components/Icons";
+import { GridIcon, ClockIcon, TableIcon, PlusIcon, MenuIcon, XIcon, GearIcon } from "@/components/Icons";
+import { useAuth } from "@/components/AuthProvider";
 import { useOpenAddClass } from "@/components/AddClassContext";
 
 export function Sidebar() {
   const { classes } = useData();
+  const { appName, profile, configured, signOut } = useAuth();
   const pathname = usePathname();
   const openAddClass = useOpenAddClass();
   const [open, setOpen] = useState(false);
@@ -30,7 +32,7 @@ export function Sidebar() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/brand-mark.png" alt="" width={26} height={26} />
           </div>
-          <div className="brand-name">SmoothSchool</div>
+          <div className="brand-name">{appName}</div>
         </div>
         <button
           type="button"
@@ -55,7 +57,7 @@ export function Sidebar() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/brand-mark.png" alt="" width={30} height={30} />
           </div>
-          <div className="brand-name">SmoothSchool</div>
+          <div className="brand-name">{appName}</div>
         </div>
 
         <div className="nav-section">
@@ -91,13 +93,22 @@ export function Sidebar() {
             <TableIcon />
             <span className="label">Schedule</span>
           </Link>
+          <Link href="/settings" className={"nav-item" + (pathname === "/settings" ? " active" : "")}>
+            <GearIcon />
+            <span className="label">Settings</span>
+          </Link>
         </div>
 
         <div className="sidebar-foot">
           Your classes, homework and afternoons — all in one place.
-          <form action="/api/logout" method="POST" className="logout-form">
-            <button type="submit" className="logout-link">Log out</button>
-          </form>
+          {configured ? (
+            <div className="logout-form">
+              {profile?.username ? <span className="signed-in-as">Signed in as {profile.username} · </span> : null}
+              <button type="button" className="logout-link" onClick={() => signOut()}>
+                Log out
+              </button>
+            </div>
+          ) : null}
         </div>
       </nav>
     </>

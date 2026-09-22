@@ -13,7 +13,7 @@ export function slugify(input: string): string {
 // These already own a top-level route (see the app/ directory), so a
 // class can't take over that URL -- "Home" becomes "home-2" instead of
 // shadowing the dashboard at /home.
-export const RESERVED_SLUGS = new Set(["home", "planner", "schedule", "api"]);
+export const RESERVED_SLUGS = new Set(["home", "planner", "schedule", "settings", "login", "api"]);
 
 // Given a desired slug and the set of slugs already in use, returns a
 // unique slug by appending -2, -3, ... as needed.

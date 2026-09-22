@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Each account can read and write only its own data:
+    // users/{uid} (profile: username, name, app name) and everything
+    // under it (classes, schedule, planner, noSchoolDays).
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+    // Everything else -- including the old pre-accounts top-level data --
+    // is locked. Publish these rules only AFTER you've used
+    // Settings -> "Import old data" in your own account.
+  }
+}

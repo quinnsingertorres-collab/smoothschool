@@ -6,6 +6,7 @@ import {
   persistentMultipleTabManager,
   type Firestore,
 } from "firebase/firestore";
+import { getAuth, type Auth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -23,9 +24,13 @@ export const firebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.pro
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
+let auth: Auth | null = null;
 
 if (firebaseReady && typeof window !== "undefined") {
   app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  // Firebase Auth keeps the signed-in user in IndexedDB, so a returning
+  // user stays signed in across visits (and offline).
+  auth = getAuth(app);
   try {
     // Persist to IndexedDB so classes/homework/schedule are readable -- and
     // still editable -- with poor or no connectivity (spotty wifi, cell
@@ -43,4 +48,4 @@ if (firebaseReady && typeof window !== "undefined") {
   }
 }
 
-export { app, db };
+export { app, db, auth };
