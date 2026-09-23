@@ -127,8 +127,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const effectiveProfile = firebaseReady ? profile : localProfile;
   const appName = resolveAppName(effectiveProfile);
 
+  // Next.js re-applies the static "SmoothSchool" title from the root
+  // layout's metadata on every client-side navigation (e.g. clicking a
+  // class), which would undo a one-time document.title assignment. So
+  // watch <head> and put the user's app name back whenever it's changed.
   useEffect(() => {
-    document.title = appName;
+    const sync = () => {
+      if (document.title !== appName) document.title = appName;
+    };
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.head, { subtree: true, childList: true, characterData: true });
+    return () => observer.disconnect();
   }, [appName]);
 
   const value = useMemo<AuthContextValue>(
