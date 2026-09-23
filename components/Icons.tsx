@@ -166,3 +166,12 @@ export function GearIcon(p: IconProps) {
     </svg>
   );
 }
+
+export function BookIcon(p: IconProps) {
+  return (
+    <svg {...base} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}>
+      <path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5z" />
+      <path d="M4 20.5A2.5 2.5 0 006.5 23H20v-5" />
+    </svg>
+  );
+}

@@ -10,6 +10,7 @@ import {
 } from "firebase/auth";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { auth, db, firebaseReady } from "@/lib/firebase";
+import { applyTheme, normalizeTheme, type ThemePref } from "@/lib/theme";
 
 // Accounts are username + password. Firebase Auth only speaks email, so
 // each username maps to a made-up address on a domain nobody receives
@@ -30,6 +31,7 @@ export interface Profile {
   username: string;
   displayName: string; // "Quinn"
   appName: string; // custom app title; "" means use the default
+  theme?: ThemePref; // accent color + light/dark; synced so it follows the user across devices
 }
 
 export const DEFAULT_APP_NAME = "SmoothSchool";
@@ -115,7 +117,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         username: d.username || (user.email || "").split("@")[0],
         displayName: d.displayName || "",
         appName: d.appName || "",
+        theme: d.theme ? normalizeTheme(d.theme) : undefined,
       });
+      // Their saved theme follows them to any device they sign in on.
+      if (d.theme) applyTheme(normalizeTheme(d.theme));
     });
   }, [user]);
 
@@ -155,6 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (auth) await fbSignOut(auth);
       },
       async saveProfile(patch) {
+        if (patch.theme) applyTheme(patch.theme);
         if (!firebaseReady) {
           setLocalProfile((p) => ({ ...p, ...patch }));
           return;

@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useData } from "@/components/DataProvider";
+import { useAuth } from "@/components/AuthProvider";
 import { useOpenAddClass } from "@/components/AddClassContext";
 import { WeatherWidget } from "@/components/WeatherWidget";
 import { PlusIcon, CalendarOffIcon } from "@/components/Icons";
@@ -17,8 +18,6 @@ function findCurrentPeriod(periods: Period[]) {
   return periods.find((p) => p.start && p.end && t >= p.start && t < p.end) || null;
 }
 
-const USER_NAME = "Quinn";
-
 function greeting(hour: number) {
   if (hour < 5) return "Up late, ";
   if (hour < 12) return "Good morning, ";
@@ -30,6 +29,8 @@ function greeting(hour: number) {
 export default function HomePage() {
   const { classes, schedule, noSchoolMap, dbConfigured, dbReady, isOnline, classById } = useData();
   const openAddClass = useOpenAddClass();
+  const { profile } = useAuth();
+  const firstName = (profile?.displayName || "").trim();
 
   const today = new Date();
   const dateStr = today.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
@@ -56,8 +57,7 @@ export default function HomePage() {
       <div className="page-head today-head">
         <div>
           <span className="eyebrow">
-            {greeting(today.getHours())}
-            {USER_NAME}
+            {firstName ? `${greeting(today.getHours())}${firstName}` : greeting(today.getHours()).replace(/, $/, "")}
           </span>
           <h1>{dateStr}</h1>
           <div className="sub">

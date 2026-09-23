@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useData } from "@/components/DataProvider";
-import { GridIcon, ClockIcon, TableIcon, PlusIcon, MenuIcon, XIcon, GearIcon } from "@/components/Icons";
+import { GridIcon, ClockIcon, TableIcon, PlusIcon, XIcon, GearIcon, BookIcon } from "@/components/Icons";
 import { useAuth } from "@/components/AuthProvider";
 import { useOpenAddClass } from "@/components/AddClassContext";
 
@@ -16,6 +16,7 @@ export function Sidebar() {
   const [open, setOpen] = useState(false);
 
   const isDashboard = pathname === "/" || pathname === "/home";
+  const isClassPage = classes.some((c) => pathname === `/${c.id}`);
 
   // Below the mobile breakpoint the sidebar becomes an off-canvas drawer;
   // put it away automatically whenever the route changes, so tapping a
@@ -34,16 +35,36 @@ export function Sidebar() {
           </div>
           <div className="brand-name">{appName}</div>
         </div>
+      </div>
+
+      {/* Phone-only bottom tab bar: the main places one thumb-tap away. */}
+      <nav className="mobile-tabbar" aria-label="Main">
+        <Link href="/home" className={"tab" + (isDashboard ? " active" : "")}>
+          <GridIcon />
+          <span>Today</span>
+        </Link>
         <button
           type="button"
-          className="menu-toggle"
-          aria-label={open ? "Close menu" : "Open menu"}
+          className={"tab" + (open || isClassPage ? " active" : "")}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
         >
-          {open ? <XIcon /> : <MenuIcon />}
+          {open ? <XIcon /> : <BookIcon />}
+          <span>Classes</span>
         </button>
-      </div>
+        <Link href="/planner" className={"tab" + (pathname === "/planner" ? " active" : "")}>
+          <ClockIcon />
+          <span>Planner</span>
+        </Link>
+        <Link href="/schedule" className={"tab" + (pathname === "/schedule" ? " active" : "")}>
+          <TableIcon />
+          <span>Schedule</span>
+        </Link>
+        <Link href="/settings" className={"tab" + (pathname === "/settings" ? " active" : "")}>
+          <GearIcon />
+          <span>Settings</span>
+        </Link>
+      </nav>
 
       <div
         className={"sidebar-backdrop" + (open ? " open" : "")}
@@ -100,7 +121,6 @@ export function Sidebar() {
         </div>
 
         <div className="sidebar-foot">
-          Your classes, homework and afternoons — all in one place.
           {configured ? (
             <div className="logout-form">
               {profile?.username ? <span className="signed-in-as">Signed in as {profile.username} · </span> : null}

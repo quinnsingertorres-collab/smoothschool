@@ -153,7 +153,7 @@ button {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px -2px rgba(109, 40, 217, 0.55);
+  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--violet) 55%, transparent);
   overflow: hidden;
 }
 .brand-mark img {
@@ -258,7 +258,7 @@ button {
   padding-top: 12px;
 }
 .logout-form {
-  margin-top: 8px;
+  margin-top: 0;
 }
 .logout-link {
   border: none;
@@ -1344,7 +1344,148 @@ table.sched tr.current-row {
   }
 
   #main {
-    padding: calc(64px + env(safe-area-inset-top)) 18px calc(50px + env(safe-area-inset-bottom));
+    /* room for the fixed top bar above and the tab bar below */
+    padding: calc(64px + env(safe-area-inset-top)) 16px calc(88px + env(safe-area-inset-bottom));
+  }
+
+  /* ---- Bottom tab bar ---- */
+  .mobile-tabbar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45; /* above the drawer, so "Classes" can also close it */
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+  .mobile-tabbar .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 0 4px;
+    border: none;
+    background: none;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--ink-faint);
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-tabbar .tab svg {
+    width: 21px;
+    height: 21px;
+  }
+  .mobile-tabbar .tab.active {
+    color: var(--violet);
+  }
+  /* The drawer stops above the tab bar instead of running under it. */
+  #sidebar {
+    height: auto;
+    bottom: calc(62px + env(safe-area-inset-bottom));
+    padding-bottom: 14px;
+  }
+  .sidebar-backdrop {
+    bottom: calc(62px + env(safe-area-inset-bottom));
+  }
+
+  /* ---- Touch-friendly sizing ---- */
+  /* 16px inputs stop iOS Safari from zooming in when a field is tapped. */
+  input[type="text"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  input[type="email"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+    padding: 10px 12px !important;
+  }
+  .btn {
+    min-height: 42px;
+    padding: 10px 16px;
+  }
+  .btn-sm {
+    min-height: 36px;
+  }
+  .form-actions {
+    flex-wrap: wrap;
+  }
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .page-head {
+    margin-bottom: 18px;
+  }
+  .page-head h1 {
+    font-size: 23px;
+  }
+  .checkbox {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  .hw-row,
+  .due-row {
+    padding-top: 13px;
+    padding-bottom: 13px;
+  }
+
+  /* Planner: one full-width day per row instead of a squeezed 7-column grid. */
+  .planner-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .planner-col {
+    min-height: 0;
+  }
+
+  /* Schedule table: let it scroll sideways instead of crushing columns. */
+  table.sched {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  /* Modals become bottom sheets that slide over the tab bar. */
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+    z-index: 60;
+  }
+  .modal {
+    max-width: none;
+    border-radius: 18px 18px 0 0;
+    padding: 20px 18px calc(22px + env(safe-area-inset-bottom));
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+
+  .segmented {
+    align-self: stretch;
+  }
+  .segmented-opt {
+    flex: 1;
+    padding: 9px 0;
+  }
+  .accent-swatch {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* No hover on touch screens: always show the planner's edit/delete buttons. */
+@media (hover: none) {
+  .block .b-edit,
+  .block .b-del {
+    opacity: 1;
   }
 }
 
@@ -1460,6 +1601,64 @@ table.sched tr.current-row {
 }
 .signed-in-as {
   font-size: 11.5px;
+}
+
+/* Appearance picker */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  align-self: flex-start;
+}
+.segmented-opt {
+  border: none;
+  background: none;
+  padding: 7px 16px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.segmented-opt.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.accent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 2px;
+}
+.accent-swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px var(--line-strong);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.accent-swatch.selected {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
+}
+.accent-swatch svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Phone-only bottom tab bar (shown inside the mobile media query below). */
+.mobile-tabbar {
+  display: none;
 }
 .login-form .btn {
   margin-top: 8px;
