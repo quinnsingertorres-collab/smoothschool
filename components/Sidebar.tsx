@@ -7,6 +7,7 @@ import { useData } from "@/components/DataProvider";
 import { GridIcon, ClockIcon, TableIcon, PlusIcon, XIcon, GearIcon, BookIcon } from "@/components/Icons";
 import { useAuth } from "@/components/AuthProvider";
 import { useOpenAddClass } from "@/components/AddClassContext";
+import { withBase } from "@/lib/base-path";
 
 export function Sidebar() {
   const { classes } = useData();
@@ -31,7 +32,7 @@ export function Sidebar() {
         <div className="brand">
           <div className="brand-mark">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand-mark.png" alt="" width={26} height={26} />
+            <img src={withBase("/brand-mark.png")} alt="" width={26} height={26} />
           </div>
           <div className="brand-name">{appName}</div>
         </div>
@@ -76,7 +77,7 @@ export function Sidebar() {
         <div className="brand">
           <div className="brand-mark">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand-mark.png" alt="" width={30} height={30} />
+            <img src={withBase("/brand-mark.png")} alt="" width={30} height={30} />
           </div>
           <div className="brand-name">{appName}</div>
         </div>

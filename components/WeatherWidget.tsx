@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { SunIcon, CloudIcon, CloudSunIcon, RainIcon, SnowIcon, StormIcon, FogIcon } from "@/components/Icons";
+import { withBase } from "@/lib/base-path";
 
 interface WeatherData {
   temp: number;
@@ -29,7 +30,7 @@ export function WeatherWidget() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/weather")
+    fetch(withBase("/api/weather"))
       .then((res) => {
         if (!res.ok) throw new Error("bad response");
         return res.json();
