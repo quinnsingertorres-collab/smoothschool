@@ -13,6 +13,7 @@ import {
 import { db as firestoreDb, firebaseReady } from "@/lib/firebase";
 import {
   ClassData,
+  ClassEvent,
   DAY_KEYS,
   DayKey,
   HomeworkItem,
@@ -68,6 +69,10 @@ interface DataContextValue {
   addProject: (classId: string, item: Omit<ProjectItem, "id">) => void;
   setProjectStatus: (classId: string, projId: string, status: ProjectItem["status"]) => void;
   deleteProject: (classId: string, projId: string) => void;
+
+  addEvent: (classId: string, item: Omit<ClassEvent, "id">) => void;
+  updateEvent: (classId: string, eventId: string, patch: Partial<Omit<ClassEvent, "id">>) => void;
+  deleteEvent: (classId: string, eventId: string) => void;
 
   addPeriod: (versionId: string, p: Omit<Period, "id">) => void;
   updatePeriod: (versionId: string, id: string, patch: Partial<Period>) => void;
@@ -263,6 +268,7 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
       order: classes.length,
       homework: [],
       projects: [],
+      events: [],
       days: input.days && input.days.length ? input.days : [],
       noHomeworkDate: "",
     };
@@ -331,6 +337,22 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
     if (!c) return;
     const projects = (c.projects || []).filter((p) => p.id !== projId);
     saveClass({ ...c, projects });
+  }
+
+  function addEvent(classId: string, item: Omit<ClassEvent, "id">) {
+    const c = classById(classId);
+    if (!c) return;
+    saveClass({ ...c, events: [...(c.events || []), { ...item, id: uid() }] });
+  }
+  function updateEvent(classId: string, eventId: string, patch: Partial<Omit<ClassEvent, "id">>) {
+    const c = classById(classId);
+    if (!c) return;
+    saveClass({ ...c, events: (c.events || []).map((e) => (e.id === eventId ? { ...e, ...patch } : e)) });
+  }
+  function deleteEvent(classId: string, eventId: string) {
+    const c = classById(classId);
+    if (!c) return;
+    saveClass({ ...c, events: (c.events || []).filter((e) => e.id !== eventId) });
   }
 
   function saveScheduleState(versions: ScheduleVersion[], activeId: string) {
@@ -490,6 +512,9 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
     addProject,
     setProjectStatus,
     deleteProject,
+    addEvent,
+    updateEvent,
+    deleteEvent,
     addPeriod,
     updatePeriod,
     deletePeriod,

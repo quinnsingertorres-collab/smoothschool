@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useData } from "@/components/DataProvider";
 import { PencilIcon, TrashIcon, PlusIcon, ExtLinkIcon, CheckIcon } from "@/components/Icons";
 import { DayPicker, formatDays } from "@/components/DayPicker";
+import { ClassEvents } from "@/components/ClassEvents";
 import { fmtDate, dueBadge, todayISO } from "@/lib/date";
 import { CLASS_COLORS, DayKey, ProjectItem } from "@/lib/types";
 
@@ -77,7 +78,7 @@ export function ClassPageClient({ slug }: { slug: string }) {
             className="btn btn-sm"
             style={{ color: "var(--danger)", borderColor: "var(--danger-soft)" }}
             onClick={() => {
-              if (confirm(`Delete "${c.name || "this class"}" and all its homework and projects?`)) {
+              if (confirm(`Delete "${c.name || "this class"}" and all its homework, projects and dates?`)) {
                 deleteClass(c.id);
               }
             }}
@@ -269,10 +270,33 @@ export function ClassPageClient({ slug }: { slug: string }) {
         ) : null}
         <div className="card">
           {!hw.length ? (
-            <div className="empty" style={{ border: "none" }}>
-              <h3>{noHomeworkToday ? "No homework today" : "No homework yet"}</h3>
-              <p>{noHomeworkToday ? "Marked — this'll reset tomorrow." : "Add an assignment to start tracking it."}</p>
-            </div>
+            noHomeworkToday ? (
+              <div className="hw-empty none">
+                <div className="hw-empty-icon">
+                  <CheckIcon />
+                </div>
+                <div>
+                  <h3>No homework today</h3>
+                  <p>You checked — nothing&apos;s due. This resets tomorrow.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="hw-empty unknown">
+                <div className="hw-empty-icon">?</div>
+                <div style={{ flex: 1 }}>
+                  <h3>Nothing logged yet</h3>
+                  <p>Add today&apos;s homework, or mark that there isn&apos;t any.</p>
+                  <div className="hw-empty-actions">
+                    <button className="btn btn-sm btn-primary" onClick={() => setHwFormOpen(true)}>
+                      <PlusIcon /> Add homework
+                    </button>
+                    <button className="btn btn-sm btn-ghost" onClick={() => setNoHomeworkToday(c.id, true)}>
+                      <CheckIcon /> No homework today
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
           ) : (
             hw.map((h) => {
               const b = h.dueDate ? dueBadge(h.dueDate) : null;
@@ -302,6 +326,8 @@ export function ClassPageClient({ slug }: { slug: string }) {
       </div>
 
       {/* Projects */}
+      <ClassEvents c={c} />
+
       <div className="section">
         <div className="section-title">
           Projects

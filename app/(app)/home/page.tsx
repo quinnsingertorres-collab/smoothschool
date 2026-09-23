@@ -6,7 +6,7 @@ import { useData } from "@/components/DataProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { useOpenAddClass } from "@/components/AddClassContext";
 import { WeatherWidget } from "@/components/WeatherWidget";
-import { PlusIcon, CalendarOffIcon } from "@/components/Icons";
+import { PlusIcon, CalendarOffIcon, CheckIcon } from "@/components/Icons";
 import { fmtTime, dueBadge, todayISO, nowHM, todayKey, meetsOnDay } from "@/lib/date";
 import { Period } from "@/lib/types";
 
@@ -166,9 +166,22 @@ export default function HomePage() {
                       {c.teacher ? c.teacher + " · " : ""}
                       {c.room ? "Rm " + c.room : ""}
                     </div>
-                    <div className={"meta" + (noHomeworkToday ? " no-hw-today" : "")}>
-                      {noHomeworkToday ? "No homework today" : `${openHw} open homework item${openHw === 1 ? "" : "s"}`}
-                    </div>
+                    {/* Three clearly different states:
+                        confirmed none (green check), has work (count),
+                        and meets today but nothing logged yet (amber, dashed). */}
+                    {noHomeworkToday ? (
+                      <span className="hw-status none">
+                        <CheckIcon /> No homework
+                      </span>
+                    ) : openHw > 0 ? (
+                      <span className="hw-status has">
+                        {openHw} to do
+                      </span>
+                    ) : meetsToday ? (
+                      <span className="hw-status unknown">Not logged yet</span>
+                    ) : (
+                      <span className="hw-status idle">Nothing open</span>
+                    )}
                   </Link>
                 );
               })}

@@ -15,6 +15,22 @@ export interface ProjectItem {
   notes: string;
 }
 
+export type EventKind = "test" | "quiz" | "date";
+
+export const EVENT_KIND_LABELS: Record<EventKind, string> = {
+  test: "Test",
+  quiz: "Quiz",
+  date: "Important date",
+};
+
+export interface ClassEvent {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  kind: EventKind;
+  notes: string;
+}
+
 export interface ClassData {
   id: string; // also the URL slug
   name: string;
@@ -28,6 +44,7 @@ export interface ClassData {
   order: number;
   homework: HomeworkItem[];
   projects: ProjectItem[];
+  events?: ClassEvent[]; // tests, quizzes and other important dates
   days?: DayKey[]; // which days it meets — empty/undefined means every school day
   noHomeworkDate: string; // YYYY-MM-DD, or "" -- set when marked "no homework" for that date
 }

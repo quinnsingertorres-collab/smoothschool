@@ -70,6 +70,17 @@ export function pastEndOfDueDate(dueDate: string): boolean {
   return n !== null && n < 0;
 }
 
+// Countdown label for a test/quiz/important date.
+export function eventBadge(iso: string): { cls: "past" | "today" | "soon" | "later"; label: string } {
+  const n = daysUntil(iso);
+  if (n === null) return { cls: "later", label: "" };
+  if (n < 0) return { cls: "past", label: fmtDate(iso) };
+  if (n === 0) return { cls: "today", label: "Today" };
+  if (n === 1) return { cls: "soon", label: "Tomorrow" };
+  if (n <= 6) return { cls: n <= 3 ? "soon" : "later", label: `In ${n} days` };
+  return { cls: "later", label: fmtDate(iso) };
+}
+
 export function dueBadge(iso: string): { cls: "overdue" | "soon" | "later"; label: string } {
   const n = daysUntil(iso);
   if (n === null) return { cls: "later", label: fmtDate(iso) };
