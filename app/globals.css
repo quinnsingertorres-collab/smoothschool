@@ -671,6 +671,145 @@ button {
   font-size: 11.5px;
   color: var(--ink-faint);
 }
+/* Tests, quizzes & important dates */
+.ev-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+}
+.ev-row:last-child {
+  border-bottom: none;
+}
+.ev-link:hover {
+  background: var(--surface-2);
+}
+.ev-row.past {
+  opacity: 0.6;
+}
+.ev-date {
+  width: 44px;
+  flex-shrink: 0;
+  text-align: center;
+  border-radius: 9px;
+  border: 1px solid var(--line-strong);
+  border-top-width: 4px;
+  padding: 2px 0 3px;
+  line-height: 1.1;
+  background: var(--surface);
+}
+.ev-date.test {
+  border-top-color: var(--danger);
+}
+.ev-date.quiz {
+  border-top-color: var(--warn);
+}
+.ev-date.date {
+  border-top-color: var(--violet);
+}
+.ev-mon {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+.ev-day {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+}
+.ev-main {
+  flex: 1;
+  min-width: 0;
+}
+.ev-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.ev-sub {
+  font-size: 12px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ev-kind {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 20px;
+}
+.ev-kind.test {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.ev-kind.quiz {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.ev-kind.date {
+  background: var(--violet-soft);
+  color: var(--violet-deep);
+}
+.ev-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.ev-badge.today {
+  background: var(--danger);
+  color: var(--surface);
+}
+.ev-badge.soon {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.ev-badge.later {
+  background: var(--surface-2);
+  color: var(--ink-faint);
+}
+.ev-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.ev-actions .ev-edit:hover {
+  color: var(--violet);
+  background: var(--violet-soft);
+}
+.ev-past {
+  border-top: 1px solid var(--line);
+}
+.ev-past summary {
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.tile-ev {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 /* Homework status on each class tile */
 .hw-status {
   align-self: flex-start;

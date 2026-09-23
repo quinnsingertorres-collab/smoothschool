@@ -6,8 +6,9 @@ import { useData } from "@/components/DataProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { useOpenAddClass } from "@/components/AddClassContext";
 import { WeatherWidget } from "@/components/WeatherWidget";
+import { EventRow } from "@/components/ClassEvents";
 import { PlusIcon, CalendarOffIcon, CheckIcon } from "@/components/Icons";
-import { fmtTime, dueBadge, todayISO, nowHM, todayKey, meetsOnDay } from "@/lib/date";
+import { fmtTime, dueBadge, todayISO, nowHM, todayKey, meetsOnDay, daysUntil } from "@/lib/date";
 import { Period } from "@/lib/types";
 
 function sortedPeriods(periods: Period[]) {
@@ -51,6 +52,15 @@ export default function HomePage() {
         .map((p) => ({ kind: "Project", classId: c.id, className: c.name, color: c.color, title: p.title, dueDate: p.dueDate })),
     ])
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+  // Tests, quizzes and important dates across every class, next two weeks.
+  const upcomingEvents = classes
+    .flatMap((c) => (c.events || []).map((ev) => ({ ev, className: c.name, color: c.color, classId: c.id })))
+    .filter(({ ev }) => {
+      const n = daysUntil(ev.date);
+      return n !== null && n >= 0 && n <= 14;
+    })
+    .sort((a, b) => a.ev.date.localeCompare(b.ev.date));
 
   return (
     <div>
@@ -140,6 +150,24 @@ export default function HomePage() {
         </div>
 
         <div className="section">
+          <div className="section-title">Tests &amp; dates</div>
+          <div className="card">
+            {!upcomingEvents.length ? (
+              <div className="empty" style={{ border: "none" }}>
+                <h3>Nothing in the next two weeks</h3>
+                <p>Add tests, quizzes and important dates from any class page.</p>
+              </div>
+            ) : (
+              upcomingEvents.slice(0, 8).map(({ ev, className, color, classId }) => (
+                <Link href={`/${classId}`} className="ev-row ev-link" key={classId + ev.id}>
+                  <EventRow ev={ev} className={className} color={color} />
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="section">
           <div className="section-title">Your classes</div>
           {!classes.length ? (
             <div className="empty">
@@ -155,6 +183,11 @@ export default function HomePage() {
                 const openHw = (c.homework || []).filter((h) => !h.done).length;
                 const meetsToday = meetsOnDay(c.days, todayDayKey);
                 const noHomeworkToday = c.noHomeworkDate === todayISO();
+                const nextAssessment = (c.events || [])
+                  .filter((e) => e.kind !== "date")
+                  .map((e) => ({ e, n: daysUntil(e.date) }))
+                  .filter((x) => x.n !== null && x.n >= 0 && x.n <= 3)
+                  .sort((x, y) => (x.n as number) - (y.n as number))[0];
                 return (
                   <Link href={`/${c.id}`} className={"class-tile" + (meetsToday ? "" : " not-today")} key={c.id}>
                     <div className="top">
@@ -166,6 +199,12 @@ export default function HomePage() {
                       {c.teacher ? c.teacher + " · " : ""}
                       {c.room ? "Rm " + c.room : ""}
                     </div>
+                    {nextAssessment ? (
+                      <span className="tile-ev">
+                        {nextAssessment.e.kind === "quiz" ? "Quiz" : "Test"}{" "}
+                        {nextAssessment.n === 0 ? "today" : nextAssessment.n === 1 ? "tomorrow" : `in ${nextAssessment.n} days`}
+                      </span>
+                    ) : null}
                     {/* Three clearly different states:
                         confirmed none (green check), has work (count),
                         and meets today but nothing logged yet (amber, dashed). */}

@@ -325,9 +325,10 @@ export function ClassPageClient({ slug }: { slug: string }) {
         </div>
       </div>
 
-      {/* Projects */}
+      {/* Tests, quizzes & important dates */}
       <ClassEvents c={c} />
 
+      {/* Projects */}
       <div className="section">
         <div className="section-title">
           Projects
