@@ -27,7 +27,7 @@ import {
 import { uid, todayKey, todayISO, pastOneOnDueDate, pastEndOfDueDate } from "@/lib/date";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { defaultScheduleVersions } from "@/lib/schedule-presets";
-import { autoMatchClasses } from "@/lib/schedule-match";
+import { autoMatchClasses, sortClassesByTime } from "@/lib/schedule-match";
 
 function emptyPlanner(): PlannerDoc {
   const p = {} as PlannerDoc;
@@ -489,11 +489,17 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
   const schedule = todaysVersion ? todaysVersion.periods : [];
   const todaysScheduleId = todaysVersion ? todaysVersion.id : "";
 
+  // Classes in the order they happen in the day (see sortClassesByTime).
+  const classesInOrder = useMemo(
+    () => sortClassesByTime(classes, scheduleVersions, todaysScheduleId, activeScheduleId),
+    [classes, scheduleVersions, todaysScheduleId, activeScheduleId]
+  );
+
   const value: DataContextValue = {
     dbReady: Boolean(db) && gotFirstSnapshot,
     dbConfigured: firebaseReady,
     isOnline,
-    classes,
+    classes: classesInOrder,
     schedule,
     scheduleVersions,
     activeScheduleId,

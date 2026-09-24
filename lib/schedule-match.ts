@@ -27,3 +27,53 @@ export function autoMatchClasses(periods: Period[], classes: ClassData[]): Recor
   }
   return result;
 }
+
+// Sorts classes into the order they happen during the day, for the sidebar
+// and the Today tiles. For each class it finds a start time, trying in turn:
+//   1. a period linked to the class in today's schedule,
+//   2. the same in the default schedule, then any other schedule version,
+//   3. a period whose number matches the class's Period field ("3", "6 & 7"),
+//   4. the class's period number on its own.
+// Classes with none of those go last, in the order they were added.
+export function sortClassesByTime(
+  classes: ClassData[],
+  versions: { id: string; periods: Period[] }[],
+  todaysVersionId: string,
+  defaultVersionId: string
+): ClassData[] {
+  const ordered = [
+    ...versions.filter((v) => v.id === todaysVersionId),
+    ...versions.filter((v) => v.id === defaultVersionId && v.id !== todaysVersionId),
+    ...versions.filter((v) => v.id !== todaysVersionId && v.id !== defaultVersionId),
+  ];
+
+  function key(c: ClassData): [number, number] {
+    for (const v of ordered) {
+      const starts = v.periods.filter((p) => p.classId === c.id && p.start).map((p) => p.start).sort();
+      if (starts.length) return [0, minutes(starts[0])];
+    }
+    const nums = parsePeriodNumbers(c.period);
+    if (nums.length) {
+      const first = Math.min(...nums);
+      for (const v of ordered) {
+        const match = v.periods
+          .filter((p) => p.type === "class" && p.start && parsePeriodNumbers(p.label).includes(first))
+          .map((p) => p.start)
+          .sort()[0];
+        if (match) return [0, minutes(match)];
+      }
+      return [1, first];
+    }
+    return [2, c.order ?? 0];
+  }
+
+  return classes
+    .map((c, i) => ({ c, k: key(c), i }))
+    .sort((a, b) => a.k[0] - b.k[0] || a.k[1] - b.k[1] || (a.c.order ?? 0) - (b.c.order ?? 0) || a.i - b.i)
+    .map((x) => x.c);
+}
+
+function minutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map((n) => parseInt(n, 10));
+  return (h || 0) * 60 + (m || 0);
+}
