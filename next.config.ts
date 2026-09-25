@@ -1,24 +1,33 @@
 import type { NextConfig } from "next";
 import { BASE_PATH } from "./lib/base-path";
 
+const APP_HOST = "school.sequinn.xyz";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Serve the whole app from sequinn.xyz/schoolmanage.
-  basePath: BASE_PATH,
+  ...(BASE_PATH ? { basePath: BASE_PATH } : {}),
   async redirects() {
     return [
-      // While this is the only thing on the domain, send the bare domain to
-      // the app. Once another project owns sequinn.xyz/, that project's
-      // config takes over "/" and this rule simply never gets hit.
-      { source: "/", destination: BASE_PATH, basePath: false, permanent: false },
-      // Old links from before the move (/home, /planner, /ap-biology, the
-      // home-screen icon...) forward to the same page under the new path.
+      // While the bare domain is still attached to this project, send
+      // sequinn.xyz/... (and www) to the app's own subdomain. Once another
+      // site owns sequinn.xyz, remove the domain from this project in Vercel
+      // and these two rules stop mattering.
       {
-        source: "/:path((?!schoolmanage(?:/|$)).+)",
-        destination: `${BASE_PATH}/:path`,
-        basePath: false,
+        source: "/:path*",
+        has: [{ type: "host", value: "sequinn.xyz" }],
+        destination: `https://${APP_HOST}/:path*`,
         permanent: false,
       },
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.sequinn.xyz" }],
+        destination: `https://${APP_HOST}/:path*`,
+        permanent: false,
+      },
+      // Old links and home-screen icons from when the app lived at
+      // /schoolmanage forward to the same page at the root.
+      { source: "/schoolmanage", destination: "/home", permanent: false },
+      { source: "/schoolmanage/:path*", destination: "/:path*", permanent: false },
     ];
   },
 };

@@ -120,6 +120,12 @@ double check `.env.local`.
    (`smoothschool-<something>.vercel.app`); every future push to
    `main` redeploys automatically.
 
+## Domain
+
+The live app is at **https://school.sequinn.xyz** (Vercel project domain,
+DNS record in Cloudflare set to "DNS only"). Old `sequinn.xyz/schoolmanage/…`
+links redirect there automatically (see `next.config.ts`).
+
 ## Project structure
 
 ```
