@@ -24,7 +24,15 @@ import {
   ProjectItem,
   ScheduleVersion,
 } from "@/lib/types";
-import { uid, todayKey, todayISO, pastOneOnDueDate, pastEndOfDueDate } from "@/lib/date";
+import {
+  uid,
+  todayKey,
+  todayISO,
+  pastEndOfDueDate,
+  homeworkClearTime,
+  noHomeworkActive,
+  isSchoolDay,
+} from "@/lib/date";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { defaultScheduleVersions } from "@/lib/schedule-presets";
 import { autoMatchClasses, sortClassesByTime } from "@/lib/schedule-match";
@@ -49,6 +57,10 @@ interface DataContextValue {
   noSchoolMap: Record<string, string>;
 
   classById: (id: string) => ClassData | undefined;
+
+  now: number; // ticks every 30s so time-based UI (current period, 7:51 resets, a new day) updates on its own
+  schoolToday: boolean; // weekday and not on the days-off list
+  isNoHomework: (c: ClassData) => boolean; // "No homework today" mark still in effect
 
   addClass: (input: {
     name: string;
@@ -118,6 +130,21 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
   const [noSchoolDays, setNoSchoolDays] = useState<NoSchoolDay[]>([]);
   const [gotFirstSnapshot, setGotFirstSnapshot] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const interval = setInterval(tick, 30_000);
+    // Phones freeze timers in the background; catch up as soon as the app is shown again.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof navigator !== "undefined") setIsOnline(navigator.onLine);
@@ -215,21 +242,38 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
   }
 
   // Auto-clear homework that's either:
-  //  - done, and past its due-date cutoff (1:00 PM on the day it was due), or
-  //  - marked "optional", once its due date has fully ended (whether it was
-  //    ever done or not).
+  //  - done, once 7:51 AM on the next school day after it was checked off has
+  //    passed (and never before 7:51 AM on its due date) -- see homeworkClearTime, or
+  //  - marked "optional", once its due date has fully ended (done or not).
   // Everything else is left alone.
   const classesRef = useRef<ClassData[]>(classes);
-  function shouldClearHomework(h: HomeworkItem): boolean {
-    if (h.optional) return pastEndOfDueDate(h.dueDate);
-    return h.done && pastOneOnDueDate(h.dueDate);
-  }
+  const noSchoolRef = useRef<Record<string, string>>({});
   function sweepDoneHomework(list: ClassData[]) {
+    const t = Date.now();
+    const noSchool = noSchoolRef.current;
     for (const c of list) {
-      const kept = (c.homework || []).filter((h) => !shouldClearHomework(h));
-      if (kept.length !== (c.homework || []).length) {
-        saveClass({ ...c, homework: kept });
+      const before = c.homework || [];
+      let changed = false;
+      const kept: HomeworkItem[] = [];
+      for (const h of before) {
+        if (h.optional && pastEndOfDueDate(h.dueDate)) {
+          changed = true;
+          continue;
+        }
+        if (h.done && !h.doneAt) {
+          // Checked off before completion times were recorded: start its clock now.
+          kept.push({ ...h, doneAt: new Date(t).toISOString() });
+          changed = true;
+          continue;
+        }
+        const clearAt = h.done ? homeworkClearTime(h, noSchool) : null;
+        if (clearAt !== null && t >= clearAt) {
+          changed = true;
+          continue;
+        }
+        kept.push(h);
       }
+      if (changed) saveClass({ ...c, homework: kept });
     }
   }
   useEffect(() => {
@@ -238,12 +282,11 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classes]);
   useEffect(() => {
-    // Also sweep on a timer so a done item disappears right at 1:00 PM even
-    // if the app is just sitting open with nothing else changing.
-    const interval = setInterval(() => sweepDoneHomework(classesRef.current), 60_000);
-    return () => clearInterval(interval);
+    // Also sweep with the clock, so items clear right at 7:51 even if the app
+    // is just sitting open with nothing else changing.
+    sweepDoneHomework(classesRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [now]);
 
   async function addClass(input: {
     name: string;
@@ -277,7 +320,11 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
       return slug;
     }
     const { id, ...data } = newClass;
-    await setDoc(ref(`classes/${id}`), data);
+    // Don't wait for the server: offline, that promise only settles once the
+    // device reconnects, which would leave the Add class form stuck. The
+    // write lands in the local cache right away (so the class page opens
+    // with it) and syncs when it can.
+    setDoc(ref(`classes/${id}`), data).catch((err) => console.error("Couldn't save class", err));
     return slug;
   }
 
@@ -298,7 +345,7 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
   function addHomework(classId: string, item: Omit<HomeworkItem, "id" | "done">) {
     const c = classById(classId);
     if (!c) return;
-    const homework = [...(c.homework || []), { ...item, id: uid(), done: false }];
+    const homework = [...(c.homework || []), { ...item, id: uid(), done: false, doneAt: "" }];
     // Adding a real assignment supersedes any earlier "no homework" mark.
     saveClass({ ...c, homework, noHomeworkDate: "" });
   }
@@ -310,7 +357,9 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
   function toggleHomework(classId: string, hwId: string) {
     const c = classById(classId);
     if (!c) return;
-    const homework = (c.homework || []).map((h) => (h.id === hwId ? { ...h, done: !h.done } : h));
+    const homework = (c.homework || []).map((h) =>
+      h.id === hwId ? { ...h, done: !h.done, doneAt: h.done ? "" : new Date().toISOString() } : h
+    );
     saveClass({ ...c, homework });
   }
   function deleteHomework(classId: string, hwId: string) {
@@ -476,15 +525,21 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
     noSchoolDays.forEach((d) => (m[d.date] = d.reason));
     return m;
   }, [noSchoolDays]);
+  noSchoolRef.current = noSchoolMap;
+
+  const todayIso = todayISO(new Date(now));
+  const schoolToday = isSchoolDay(todayIso, noSchoolMap);
+  const isNoHomework = (c: ClassData) => noHomeworkActive(c.noHomeworkDate, noSchoolMap, now);
 
   // A version with today's weekday in its activeDays takes over automatically
   // (a recurring pattern, e.g. "Mondays"); otherwise fall back to whichever
   // version is set as the default.
+  const dayKeyNow = todayKey();
   const todaysVersion = useMemo(() => {
-    const dayKey = todayKey();
+    const dayKey = dayKeyNow;
     const autoMatch = scheduleVersions.find((v) => v.activeDays && v.activeDays.length && v.activeDays.includes(dayKey));
     return autoMatch || scheduleVersions.find((v) => v.id === activeScheduleId) || scheduleVersions[0];
-  }, [scheduleVersions, activeScheduleId]);
+  }, [scheduleVersions, activeScheduleId, dayKeyNow]);
 
   const schedule = todaysVersion ? todaysVersion.periods : [];
   const todaysScheduleId = todaysVersion ? todaysVersion.id : "";
@@ -508,6 +563,9 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
     noSchoolDays,
     noSchoolMap,
     classById,
+    now,
+    schoolToday,
+    isNoHomework,
     addClass,
     updateClassInfo,
     deleteClass,

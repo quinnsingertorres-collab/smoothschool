@@ -176,7 +176,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         if (!db || !user) return;
-        await setDoc(doc(db, "users", user.uid), patch, { merge: true });
+        // Not awaited: offline the server ack never comes, which would leave
+        // Settings stuck on "Saving…". The local cache updates instantly and
+        // syncs on reconnect.
+        setDoc(doc(db, "users", user.uid), patch, { merge: true }).catch((err) =>
+          console.error("Couldn't save settings", err)
+        );
       },
     }),
     [ready, user, effectiveProfile, appName]

@@ -831,6 +831,10 @@ button {
   width: 11px;
   height: 11px;
 }
+.hw-status.done {
+  background: var(--good);
+  color: var(--surface);
+}
 .hw-status.none {
   background: var(--good-soft);
   color: var(--good);
@@ -848,6 +852,36 @@ button {
   background: var(--surface-2);
   color: var(--ink-faint);
   font-weight: 600;
+}
+
+/* "All homework done" strip above a fully checked-off list */
+.hw-alldone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--good-soft);
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.hw-alldone .hw-empty-icon {
+  width: 30px;
+  height: 30px;
+  background: var(--good);
+  color: var(--surface);
+}
+.hw-alldone .hw-empty-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.hw-alldone-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--good);
+}
+.hw-alldone-sub {
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
 /* Empty homework list on a class page: confirmed-none vs not-logged-yet */

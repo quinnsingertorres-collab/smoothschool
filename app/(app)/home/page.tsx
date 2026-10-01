@@ -14,8 +14,8 @@ import { Period } from "@/lib/types";
 function sortedPeriods(periods: Period[]) {
   return [...periods].sort((a, b) => (a.start || "").localeCompare(b.start || ""));
 }
-function findCurrentPeriod(periods: Period[]) {
-  const t = nowHM();
+function findCurrentPeriod(periods: Period[], at: Date) {
+  const t = nowHM(at);
   return periods.find((p) => p.start && p.end && t >= p.start && t < p.end) || null;
 }
 
@@ -28,19 +28,20 @@ function greeting(hour: number) {
 }
 
 export default function HomePage() {
-  const { classes, schedule, noSchoolMap, dbConfigured, dbReady, isOnline, classById } = useData();
+  const { classes, schedule, noSchoolMap, dbConfigured, dbReady, isOnline, classById, now, schoolToday, isNoHomework } =
+    useData();
   const openAddClass = useOpenAddClass();
   const { profile } = useAuth();
   const firstName = (profile?.displayName || "").trim();
 
-  const today = new Date();
+  const today = new Date(now);
   const dateStr = today.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const iso = todayISO(today);
   const noSchoolReason = noSchoolMap[iso];
   const todayDayKey = todayKey();
 
   const ps = sortedPeriods(schedule);
-  const cur = findCurrentPeriod(ps);
+  const cur = findCurrentPeriod(ps, today);
 
   const dueItems = classes
     .flatMap((c) => [
@@ -180,9 +181,12 @@ export default function HomePage() {
           ) : (
             <div className="class-tiles">
               {classes.map((c) => {
-                const openHw = (c.homework || []).filter((h) => !h.done).length;
-                const meetsToday = meetsOnDay(c.days, todayDayKey);
-                const noHomeworkToday = c.noHomeworkDate === todayISO();
+                const allHw = c.homework || [];
+                const openHw = allHw.filter((h) => !h.done).length;
+                const allDone = allHw.length > 0 && openHw === 0;
+                // Weekends and days off count as "not today" for every class.
+                const meetsToday = schoolToday && meetsOnDay(c.days, todayDayKey);
+                const noHomeworkToday = isNoHomework(c);
                 const nextAssessment = (c.events || [])
                   .filter((e) => e.kind !== "date")
                   .map((e) => ({ e, n: daysUntil(e.date) }))
@@ -205,16 +209,20 @@ export default function HomePage() {
                         {nextAssessment.n === 0 ? "today" : nextAssessment.n === 1 ? "tomorrow" : `in ${nextAssessment.n} days`}
                       </span>
                     ) : null}
-                    {/* Three clearly different states:
-                        confirmed none (green check), has work (count),
-                        and meets today but nothing logged yet (amber, dashed). */}
-                    {noHomeworkToday ? (
-                      <span className="hw-status none">
-                        <CheckIcon /> No homework
-                      </span>
-                    ) : openHw > 0 ? (
+                    {/* Clearly different states: work left (count), all of it
+                        finished (green, with count), confirmed none (green
+                        check), and meets today but nothing logged yet (amber, dashed). */}
+                    {openHw > 0 ? (
                       <span className="hw-status has">
                         {openHw} to do
+                      </span>
+                    ) : allDone ? (
+                      <span className="hw-status done">
+                        <CheckIcon /> All done ({allHw.length})
+                      </span>
+                    ) : noHomeworkToday ? (
+                      <span className="hw-status none">
+                        <CheckIcon /> No homework
                       </span>
                     ) : meetsToday ? (
                       <span className="hw-status unknown">Not logged yet</span>

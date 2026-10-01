@@ -18,8 +18,7 @@ export function meetsOnDay(days: import("./types").DayKey[] | undefined, dayKey:
   return !days || !days.length || days.includes(dayKey);
 }
 
-export function nowHM(): string {
-  const d = new Date();
+export function nowHM(d: Date = new Date()): string {
   return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
 }
 
@@ -47,18 +46,6 @@ export function daysUntil(iso: string): number | null {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return Math.round((d.getTime() - today.getTime()) / 86400000);
-}
-
-// True once it's past 1:00 PM (local time) on the given due date -- i.e. any
-// day after the due date, or the due date itself once the clock hits 13:00.
-// Used to auto-clear homework that's done and past its due-date cutoff.
-export function pastOneOnDueDate(dueDate: string): boolean {
-  if (!dueDate) return false;
-  const n = daysUntil(dueDate);
-  if (n === null) return false;
-  if (n < 0) return true;
-  if (n === 0) return nowHM() >= "13:00";
-  return false;
 }
 
 // True once the due date itself has fully ended (i.e. it's now a later
@@ -89,4 +76,60 @@ export function dueBadge(iso: string): { cls: "overdue" | "soon" | "later"; labe
   if (n === 1) return { cls: "soon", label: "Due tomorrow" };
   if (n <= 3) return { cls: "soon", label: `Due in ${n} days` };
   return { cls: "later", label: fmtDate(iso) };
+}
+
+// ---------- School-day status resets ----------
+// Homework statuses ("done" check-offs and "No homework today" marks) reset
+// at the start of the next day school is in session.
+export const SCHOOL_DAY_START = "07:51";
+
+export function addDaysISO(iso: string, n: number): string {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return todayISO(d);
+}
+
+// Mon–Fri, minus anything on the Schedule page's "days off" list.
+export function isSchoolDay(iso: string, noSchool: Record<string, string>): boolean {
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d.getTime())) return false;
+  const wd = d.getDay();
+  return wd !== 0 && wd !== 6 && !noSchool[iso];
+}
+
+export function nextSchoolDayAfter(iso: string, noSchool: Record<string, string>): string {
+  let d = addDaysISO(iso, 1);
+  // A year of days off in a row would be strange; the cap just guarantees
+  // the loop ends.
+  for (let i = 0; i < 370 && !isSchoolDay(d, noSchool); i++) d = addDaysISO(d, 1);
+  return d;
+}
+
+function atTime(iso: string, hm: string): number {
+  return new Date(`${iso}T${hm}:00`).getTime();
+}
+
+// When a status set on `dayISO` resets: 7:51 AM on the next school day.
+export function statusResetTime(dayISO: string, noSchool: Record<string, string>): number {
+  return atTime(nextSchoolDayAfter(dayISO, noSchool), SCHOOL_DAY_START);
+}
+
+// A checked-off assignment clears at 7:51 AM on the next school day after it
+// was checked off -- but never before 7:51 AM on its own due date, so
+// something finished early stays visible (as done) until it's handed in.
+export function homeworkClearTime(
+  h: { doneAt?: string; dueDate: string },
+  noSchool: Record<string, string>
+): number | null {
+  if (!h.doneAt) return null;
+  const doneDay = todayISO(new Date(h.doneAt));
+  let t = statusResetTime(doneDay, noSchool);
+  if (h.dueDate) t = Math.max(t, atTime(h.dueDate, SCHOOL_DAY_START));
+  return t;
+}
+
+// Is a "No homework today" mark (set on `markedISO`) still in effect?
+export function noHomeworkActive(markedISO: string, noSchool: Record<string, string>, now = Date.now()): boolean {
+  if (!markedISO) return false;
+  return now < statusResetTime(markedISO, noSchool);
 }

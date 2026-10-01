@@ -5,6 +5,7 @@ export interface HomeworkItem {
   notes: string;
   done: boolean;
   optional: boolean; // if true, this clears at the end of the due date regardless of done
+  doneAt?: string; // ISO timestamp of when it was checked off ("" when not done)
 }
 
 export interface ProjectItem {

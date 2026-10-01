@@ -6,7 +6,7 @@ import { useData } from "@/components/DataProvider";
 import { PencilIcon, TrashIcon, PlusIcon, ExtLinkIcon, CheckIcon } from "@/components/Icons";
 import { DayPicker, formatDays } from "@/components/DayPicker";
 import { ClassEvents } from "@/components/ClassEvents";
-import { fmtDate, dueBadge, todayISO } from "@/lib/date";
+import { fmtDate, dueBadge } from "@/lib/date";
 import { CLASS_COLORS, DayKey, ProjectItem } from "@/lib/types";
 
 function hexToSoft(hex: string) {
@@ -29,6 +29,7 @@ export function ClassPageClient({ slug }: { slug: string }) {
     toggleHomework,
     deleteHomework,
     setNoHomeworkToday,
+    isNoHomework,
     addProject,
     setProjectStatus,
     deleteProject,
@@ -53,8 +54,13 @@ export function ClassPageClient({ slug }: { slug: string }) {
     );
   }
 
-  const hw = [...(c.homework || [])].sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"));
-  const noHomeworkToday = c.noHomeworkDate === todayISO();
+  // Unfinished work first (soonest due on top), finished work below it.
+  const hw = [...(c.homework || [])].sort(
+    (a, b) => Number(a.done) - Number(b.done) || (a.dueDate || "9999").localeCompare(b.dueDate || "9999")
+  );
+  const noHomeworkToday = isNoHomework(c);
+  const hwDoneCount = hw.filter((h) => h.done).length;
+  const allHwDone = hw.length > 0 && hwDoneCount === hw.length;
   const projects = [...(c.projects || [])].sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"));
 
   return (
@@ -277,7 +283,7 @@ export function ClassPageClient({ slug }: { slug: string }) {
                 </div>
                 <div>
                   <h3>No homework today</h3>
-                  <p>You checked — nothing&apos;s due. This resets tomorrow.</p>
+                  <p>You checked — nothing&apos;s due. This resets at 7:51 AM next school day.</p>
                 </div>
               </div>
             ) : (
@@ -298,7 +304,21 @@ export function ClassPageClient({ slug }: { slug: string }) {
               </div>
             )
           ) : (
-            hw.map((h) => {
+            <>
+            {allHwDone ? (
+              <div className="hw-alldone">
+                <div className="hw-empty-icon">
+                  <CheckIcon />
+                </div>
+                <div>
+                  <div className="hw-alldone-title">
+                    All homework done{hw.length > 1 ? ` (${hw.length} of ${hw.length})` : ""}
+                  </div>
+                  <div className="hw-alldone-sub">Finished work clears at 7:51 AM next school day.</div>
+                </div>
+              </div>
+            ) : null}
+            {hw.map((h) => {
               const b = h.dueDate ? dueBadge(h.dueDate) : null;
               return (
                 <div className="hw-row" key={h.id}>
@@ -320,7 +340,8 @@ export function ClassPageClient({ slug }: { slug: string }) {
                   </button>
                 </div>
               );
-            })
+            })}
+            </>
           )}
         </div>
       </div>
