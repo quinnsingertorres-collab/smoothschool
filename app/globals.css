@@ -715,6 +715,9 @@ button {
 .ev-date.date {
   border-top-color: var(--violet);
 }
+.ev-date.project {
+  border-top-color: var(--good);
+}
 .ev-mon {
   display: block;
   font-size: 9.5px;
@@ -766,6 +769,10 @@ button {
 .ev-kind.date {
   background: var(--violet-soft);
   color: var(--violet-deep);
+}
+.ev-kind.project {
+  background: var(--good-soft);
+  color: var(--good);
 }
 .ev-badge {
   font-size: 11px;

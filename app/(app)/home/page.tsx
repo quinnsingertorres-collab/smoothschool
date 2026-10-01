@@ -6,7 +6,7 @@ import { useData } from "@/components/DataProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { useOpenAddClass } from "@/components/AddClassContext";
 import { WeatherWidget } from "@/components/WeatherWidget";
-import { EventRow } from "@/components/ClassEvents";
+import { EventRow, projectDueDates } from "@/components/ClassEvents";
 import { PlusIcon, CalendarOffIcon, CheckIcon } from "@/components/Icons";
 import { fmtTime, dueBadge, todayISO, nowHM, todayKey, meetsOnDay, daysUntil } from "@/lib/date";
 import { Period } from "@/lib/types";
@@ -56,7 +56,9 @@ export default function HomePage() {
 
   // Tests, quizzes and important dates across every class, next two weeks.
   const upcomingEvents = classes
-    .flatMap((c) => (c.events || []).map((ev) => ({ ev, className: c.name, color: c.color, classId: c.id })))
+    .flatMap((c) =>
+      [...(c.events || []), ...projectDueDates(c)].map((ev) => ({ ev, className: c.name, color: c.color, classId: c.id }))
+    )
     .filter(({ ev }) => {
       const n = daysUntil(ev.date);
       return n !== null && n >= 0 && n <= 14;
@@ -156,7 +158,7 @@ export default function HomePage() {
             {!upcomingEvents.length ? (
               <div className="empty" style={{ border: "none" }}>
                 <h3>Nothing in the next two weeks</h3>
-                <p>Add tests, quizzes and important dates from any class page.</p>
+                <p>Tests, quizzes, project due dates and other important dates from your classes show up here.</p>
               </div>
             ) : (
               upcomingEvents.slice(0, 8).map(({ ev, className, color, classId }) => (

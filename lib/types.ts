@@ -16,12 +16,15 @@ export interface ProjectItem {
   notes: string;
 }
 
-export type EventKind = "test" | "quiz" | "date";
+// "project" is never stored as an event: project due dates are pulled in
+// from the class's Projects list so they show alongside tests and quizzes.
+export type EventKind = "test" | "quiz" | "date" | "project";
 
 export const EVENT_KIND_LABELS: Record<EventKind, string> = {
   test: "Test",
   quiz: "Quiz",
   date: "Important date",
+  project: "Project due",
 };
 
 export interface ClassEvent {

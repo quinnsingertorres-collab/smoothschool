@@ -6,6 +6,22 @@ import { PencilIcon, PlusIcon, TrashIcon } from "@/components/Icons";
 import { eventBadge, todayISO } from "@/lib/date";
 import { ClassData, ClassEvent, EVENT_KIND_LABELS, EventKind } from "@/lib/types";
 
+const PROJECT_STATUS_LABELS = { "not-started": "Not started", "in-progress": "In progress", done: "Done" } as const;
+
+// A class's unfinished projects that have a due date, shaped like events so
+// they can sit in the same list. Edited from the Projects section, not here.
+export function projectDueDates(c: ClassData): ClassEvent[] {
+  return (c.projects || [])
+    .filter((p) => p.dueDate && p.status !== "done")
+    .map((p) => ({
+      id: `project-${p.id}`,
+      title: p.title,
+      date: p.dueDate,
+      kind: "project" as const,
+      notes: PROJECT_STATUS_LABELS[p.status] || "",
+    }));
+}
+
 type EventInput = Omit<ClassEvent, "id">;
 
 function EventForm({
@@ -102,7 +118,11 @@ export function EventRow({ ev, className, color }: { ev: ClassEvent; className?:
           {ev.notes ? ` · ${ev.notes}` : ""}
         </div>
       </div>
-      {b.label && b.cls !== "past" ? <span className={"ev-badge " + b.cls}>{b.label}</span> : null}
+      {ev.kind === "project" && b.cls === "past" ? (
+        <span className="ev-badge today">Overdue</span>
+      ) : b.label && b.cls !== "past" ? (
+        <span className={"ev-badge " + b.cls}>{b.label}</span>
+      ) : null}
     </>
   );
 }
@@ -113,11 +133,20 @@ export function ClassEvents({ c }: { c: ClassData }) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const today = todayISO();
-  const all = [...(c.events || [])].sort((a, b) => a.date.localeCompare(b.date));
-  const upcoming = all.filter((e) => e.date >= today);
-  const past = all.filter((e) => e.date < today).reverse();
+  const all = [...(c.events || []), ...projectDueDates(c)].sort((a, b) => a.date.localeCompare(b.date));
+  // An unfinished project stays up top even once it's overdue, rather than
+  // being tucked away under "Past".
+  const upcoming = all.filter((e) => e.date >= today || e.kind === "project");
+  const past = all.filter((e) => e.date < today && e.kind !== "project").reverse();
 
   function renderRow(ev: ClassEvent) {
+    if (ev.kind === "project") {
+      return (
+        <div className={"ev-row ev-project"} key={ev.id} title="Edit or finish this in Projects below">
+          <EventRow ev={ev} />
+        </div>
+      );
+    }
     if (editingId === ev.id) {
       return (
         <div key={ev.id} style={{ padding: 10 }}>
@@ -170,7 +199,10 @@ export function ClassEvents({ c }: { c: ClassData }) {
         {!upcoming.length ? (
           <div className="empty" style={{ border: "none" }}>
             <h3>Nothing coming up</h3>
-            <p>Add tests, quizzes and other dates to remember, like a field trip or a form deadline.</p>
+            <p>
+              Add tests, quizzes and other dates to remember, like a field trip or a form deadline. Project due dates
+              show up here too.
+            </p>
           </div>
         ) : (
           upcoming.map(renderRow)
