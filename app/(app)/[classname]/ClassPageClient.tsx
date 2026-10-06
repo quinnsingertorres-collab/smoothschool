@@ -186,7 +186,7 @@ export function ClassPageClient({ slug }: { slug: string }) {
           <>
             <h1>{c.name || "Untitled class"}</h1>
             <div className="meta-grid">
-              <MetaItem k="Period" v={c.period ? `Period ${c.period}` : "—"} />
+              <MetaItem k="Period" v={!c.period ? "—" : /^\d/.test(c.period) ? `Period ${c.period}` : c.period} />
               <MetaItem k="Teacher" v={c.teacher || "—"} />
               <MetaItem k="Room" v={c.room || "—"} />
               <MetaItem k="Contact" v={c.contact || "—"} />

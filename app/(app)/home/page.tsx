@@ -8,7 +8,7 @@ import { useOpenAddClass } from "@/components/AddClassContext";
 import { WeatherWidget } from "@/components/WeatherWidget";
 import { EventRow, projectDueDates } from "@/components/ClassEvents";
 import { PlusIcon, CalendarOffIcon, CheckIcon } from "@/components/Icons";
-import { fmtTime, dueBadge, todayISO, nowHM, todayKey, meetsOnDay, daysUntil } from "@/lib/date";
+import { fmtTime, dueBadge, todayISO, nowHM, todayKey, meetsOnDay, daysUntil, nextSchoolDayAfter } from "@/lib/date";
 import { Period } from "@/lib/types";
 
 function sortedPeriods(periods: Period[]) {
@@ -37,7 +37,16 @@ export default function HomePage() {
   const today = new Date(now);
   const dateStr = today.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const iso = todayISO(today);
-  const noSchoolReason = noSchoolMap[iso];
+  // Days off from the Schedule page, plus weekends -- either way there's no
+  // bell schedule to show, and "Right now: Period 3" on a Saturday is wrong.
+  const noSchoolReason = noSchoolMap[iso] || (!schoolToday ? "Weekend" : "");
+  const nextSchoolLabel = noSchoolReason
+    ? new Date(nextSchoolDayAfter(iso, noSchoolMap) + "T00:00:00").toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      })
+    : "";
   const todayDayKey = todayKey();
 
   const ps = sortedPeriods(schedule);
@@ -97,7 +106,9 @@ export default function HomePage() {
           <CalendarOffIcon />
           <div>
             <div className="title">No school today</div>
-            <div className="reason">{noSchoolReason}</div>
+            <div className="reason">
+              {noSchoolReason} · Next school day: {nextSchoolLabel}
+            </div>
           </div>
         </div>
       ) : ps.length ? (

@@ -109,6 +109,7 @@ export default function SchedulePage() {
     noSchoolDays,
     addNoSchoolDay,
     deleteNoSchoolDay,
+    schoolToday,
   } = useData();
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [addingPeriod, setAddingPeriod] = useState(false);
@@ -124,7 +125,9 @@ export default function SchedulePage() {
     scheduleVersions[0];
 
   const ps = sortedPeriods(viewing ? viewing.periods : []);
-  const cur = findCurrentPeriod(ps);
+  // Only highlight "now" on the schedule that's actually running today, and
+  // only on a school day.
+  const cur = schoolToday && viewing && viewing.id === todaysScheduleId ? findCurrentPeriod(ps) : null;
   const upcomingDayOff = new Date();
   upcomingDayOff.setDate(upcomingDayOff.getDate() - 1);
   const relevantDaysOff = noSchoolDays.filter((d) => d.date >= todayISO(upcomingDayOff));

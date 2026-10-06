@@ -10,7 +10,7 @@ import {
 } from "firebase/auth";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { auth, db, firebaseReady } from "@/lib/firebase";
-import { applyTheme, normalizeTheme, type ThemePref } from "@/lib/theme";
+import { applyTheme, normalizeTheme, DEFAULT_THEME, type ThemePref } from "@/lib/theme";
 
 // Accounts are username + password. Firebase Auth only speaks email, so
 // each username maps to a made-up address on a domain nobody receives
@@ -112,6 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!db || !user) return;
     return onSnapshot(doc(db, "users", user.uid), (snap) => {
+      // Empty local cache on a fresh device: wait for the server's answer.
+      if (!snap.exists() && snap.metadata.fromCache) return;
       const d = (snap.data() || {}) as Partial<Profile>;
       setProfile({
         username: d.username || (user.email || "").split("@")[0],
@@ -119,8 +121,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         appName: d.appName || "",
         theme: d.theme ? normalizeTheme(d.theme) : undefined,
       });
-      // Their saved theme follows them to any device they sign in on.
-      if (d.theme) applyTheme(normalizeTheme(d.theme));
+      // Their saved theme follows them to any device they sign in on. No
+      // saved theme means the default -- not whatever the previous account
+      // signed in on this device had picked.
+      applyTheme(d.theme ? normalizeTheme(d.theme) : DEFAULT_THEME);
     });
   }, [user]);
 

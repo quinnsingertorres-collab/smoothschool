@@ -169,38 +169,54 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
         setClasses(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassData, "id">) })));
         setGotFirstSnapshot(true);
       }),
-      onSnapshot(ref("schedule/main"), (snap) => {
+      onSnapshot(ref("schedule/main"), { includeMetadataChanges: true }, (snap) => {
+        // On a new device (or one that's offline) the first answer can come
+        // from an empty local cache, where "no schedule saved" just means "not
+        // loaded yet". Never seed or migrate from that -- writing defaults then
+        // would overwrite the real schedule on the server once back online.
+        if (!snap.exists() && snap.metadata.fromCache) return;
         const data = snap.exists()
-          ? (snap.data() as { versions?: ScheduleVersion[]; activeVersionId?: string; periods?: Period[] })
+          ? (snap.data() as {
+              versions?: ScheduleVersion[];
+              activeVersionId?: string;
+              periods?: Period[];
+              seededPresets?: string[];
+            })
           : {};
         if (data.versions && data.versions.length) {
-          // Backfill any preset schedule versions that don't exist yet by name
-          // (e.g. an account that already had a "Regular" schedule before the
-          // Early Release / Advisory Activity / Extended Advisory presets shipped),
-          // and refill an empty "Regular" version's periods from the preset too.
-          const presets = defaultScheduleVersions();
-          const existingNames = new Set(data.versions.map((v) => v.name));
-          const missingPresets = presets.filter((v) => v.name !== "Regular" && !existingNames.has(v.name));
-          let changed = missingPresets.length > 0;
-          let versions = data.versions.map((v) => {
-            if (v.name === "Regular" && v.periods.length === 0) {
-              changed = true;
-              const regularPreset = presets.find((p) => p.name === "Regular");
-              return regularPreset ? { ...v, periods: regularPreset.periods } : v;
-            }
-            return v;
-          });
-          if (missingPresets.length) versions = [...versions, ...missingPresets];
+          let versions = data.versions;
           const activeId =
             data.activeVersionId && versions.some((v) => v.id === data.activeVersionId)
               ? data.activeVersionId
               : versions[0].id;
+          // One-time backfill for accounts made before the Early Release /
+          // Advisory Activity / Extended Advisory presets existed. It runs once
+          // (recorded in seededPresets), so a preset you delete or rename stays
+          // gone, and a Regular schedule you empty on purpose stays empty.
+          if (!data.seededPresets && !snap.metadata.fromCache) {
+            const presets = defaultScheduleVersions();
+            const existingNames = new Set(versions.map((v) => v.name));
+            const missingPresets = presets.filter((v) => v.name !== "Regular" && !existingNames.has(v.name));
+            versions = versions.map((v) => {
+              if (v.name === "Regular" && v.periods.length === 0) {
+                const regularPreset = presets.find((p) => p.name === "Regular");
+                return regularPreset ? { ...v, periods: regularPreset.periods } : v;
+              }
+              return v;
+            });
+            if (missingPresets.length) versions = [...versions, ...missingPresets];
+            if (db) {
+              setDoc(
+                ref("schedule/main"),
+                { versions, activeVersionId: activeId, seededPresets: presets.map((p) => p.name) },
+                { merge: true }
+              );
+            }
+          }
           setScheduleVersions(versions);
           setActiveScheduleIdRaw(activeId);
-          if (changed && db) {
-            setDoc(ref("schedule/main"), { versions, activeVersionId: activeId });
-          }
         } else if (data.periods && data.periods.length) {
+          if (snap.metadata.fromCache) return;
           // Legacy shape from before multiple schedule versions existed — migrate in place.
           const legacyId = uid();
           const migrated: ScheduleVersion[] = [{ id: legacyId, name: "Regular", periods: data.periods }];
@@ -208,10 +224,17 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
           setActiveScheduleIdRaw(legacyId);
           if (db) setDoc(ref("schedule/main"), { versions: migrated, activeVersionId: legacyId });
         } else {
+          if (snap.metadata.fromCache) return;
           const seeded = defaultScheduleVersions();
           setScheduleVersions(seeded);
           setActiveScheduleIdRaw(seeded[0].id);
-          if (db) setDoc(ref("schedule/main"), { versions: seeded, activeVersionId: seeded[0].id });
+          if (db) {
+            setDoc(ref("schedule/main"), {
+              versions: seeded,
+              activeVersionId: seeded[0].id,
+              seededPresets: seeded.map((p) => p.name),
+            });
+          }
         }
       }),
       onSnapshot(ref("planner/week"), (snap) => {
@@ -335,6 +358,17 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
   }
 
   function deleteClass(id: string) {
+    // Unlink it from any schedule periods, so a class added later that ends
+    // up with the same name (and so the same id) doesn't inherit its slots.
+    if (scheduleVersions.some((v) => v.periods.some((p) => p.classId === id))) {
+      saveScheduleState(
+        scheduleVersions.map((v) => ({
+          ...v,
+          periods: v.periods.map((p) => (p.classId === id ? { ...p, classId: null } : p)),
+        })),
+        activeScheduleId
+      );
+    }
     if (!db) {
       setClasses((prev) => prev.filter((c) => c.id !== id));
       return;
@@ -407,7 +441,7 @@ export function DataProvider({ children, userId }: { children: React.ReactNode; 
   function saveScheduleState(versions: ScheduleVersion[], activeId: string) {
     setScheduleVersions(versions);
     setActiveScheduleIdRaw(activeId);
-    if (db) setDoc(ref("schedule/main"), { versions, activeVersionId: activeId });
+    if (db) setDoc(ref("schedule/main"), { versions, activeVersionId: activeId }, { merge: true });
   }
 
   function addPeriod(versionId: string, p: Omit<Period, "id">) {
